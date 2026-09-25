@@ -30,20 +30,14 @@ There are two completely independent bots running on separate GitHub repositorie
 ---
 
 ## 3. Managing Images (Local PC vs GitHub)
-Because the bot runs on GitHub and deletes files from GitHub, you must be careful with your local PC folder to avoid deleting unposted images.
 
-**Best Practice (Direct GitHub Upload):**
-The safest and easiest way to add images is to bypass your PC folder entirely:
-1. Open `github.com` in your browser.
-2. Go to your repository (`Auto-Insta-Post` or `Auto-Insta-Pooja`).
-3. Click on the `images` folder.
-4. Click **"Add file" > "Upload files"** and drag-and-drop your new images directly.
+**New Clean-PC Workflow (As requested by User):**
+1. **Adding New Images/Videos:** Save your new media files into the `images/` folder on your PC.
+2. **Uploading:** Tell me (the AI) to "Upload to GitHub" or use `git push`.
+3. **Local Deletion:** Once the images are successfully uploaded to GitHub, you can **IMMEDIATELY DELETE** them from your local PC folder. This keeps your PC storage completely empty and clean!
+4. **Auto-Deletion on GitHub:** Even though you deleted them from your PC, the images are safely queued on GitHub. The bot will automatically delete them from the GitHub server **5 minutes after posting** them to Instagram/Facebook.
 
-**Alternative Practice (Using PC & Git):**
-If you prefer adding images to your PC folder:
-1. Add images to the `images` folder on your PC.
-2. Tell the AI (or use CMD): `git add .`, `git commit -m "add images"`, `git push`.
-3. **Crucial Step:** Whenever you come back to your PC days later, ALWAYS run `git pull` first. This will safely delete the images from your PC that the bot already posted and deleted from GitHub. Never delete them manually from your PC.
+*(Note: Since you are deleting them locally, you do not need to use `git pull` to sync deletions anymore. Just drop new files, push, and delete locally!)*
 
 ---
 
