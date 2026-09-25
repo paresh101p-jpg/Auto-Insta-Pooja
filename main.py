@@ -76,7 +76,7 @@ def generate_caption(image_path):
                 print(f"Gemini error on attempt {attempt} with {model_name}: {e}")
                 time.sleep(3)
                 
-    return "Beautiful Devotional Thought. 🙏✨\n\nFollow us for daily positive thoughts.\n\n#bhakti #devotion #pooja #spirituality #peace"
+    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\n👉 @pooja.perfect_ai\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
