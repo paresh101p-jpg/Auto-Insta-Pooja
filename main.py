@@ -215,8 +215,8 @@ if __name__ == "__main__":
         post_fb_story(image_url)
         
         if success:
-            print("⏳ All posts done. Waiting 1 hour (3600s) before deleting image from GitHub...")
-            time.sleep(3600) # Give IG time to fetch it completely
+            print("⏳ All posts done. Waiting 5 minutes (300s) before deleting image from GitHub...")
+            time.sleep(300) # Give IG time to fetch it completely
             delete_posted_image(image_path)
         else:
             print("❌ Post failed. Not deleting the image.")
