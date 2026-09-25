@@ -87,4 +87,9 @@ When I (the AI) am tasked with generating new images for **Auto-Insta-Pooja** (F
    - **Neckline (CRITICAL):** The woman must wear a dress with the EXACT SAME V-neckline shape as the reference image. Do NOT change or cover the neckline.
    - **Clothing & Body:** Change the clothing color (e.g. bright red), make it a short dress, and show the waist (kamar).
    - **Pose & Setting:** Change the pose to a playful, dancing, or masti pose. Use a beautiful outdoor background (like a garden).
-4. **Posting Schedule:** Both the Auto-Insta-Pooja and Auto-Insta-Post bots are configured to run 3 times a day strictly at **9:00 AM, 3:00 PM, and 9:00 PM (IST)**.
+4. **Paresh Image Reference (STRICT):** When generating images for Paresh, you MUST strictly follow the Real-Life Mockup style:
+   - **Background:** A hyper-realistic vintage/rustic background (e.g., old weathered wooden door, wooden block, boat, vintage book, stone wall).
+   - **Text (CRITICAL):** The Hindi quote must be painted directly and realistically onto the surface like a natural mural or mockup, perfectly integrated with the texture.
+   - **Elements:** Always include exactly TWO peacock feathers (morpankh) and ONE wooden flute (bansuri) resting near the text.
+   - **Watermark:** Below the main quote, write the text '@PareshPadsala_' in smaller letters.
+5. **Posting Schedule:** Both the Auto-Insta-Pooja and Auto-Insta-Post bots are configured to run 3 times a day strictly at **9:00 AM, 3:00 PM, and 9:00 PM (IST)**.
