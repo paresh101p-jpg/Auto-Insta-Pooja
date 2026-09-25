@@ -40,20 +40,20 @@ def get_next_image():
     return chosen
 
 def generate_caption(image_path):
-    print("Reading Hindi text from the image using Gemini Vision...")
+    print("Analyzing image using Gemini Vision...")
     prompt = (
-        "You are an expert Instagram Social Media Manager for a devotional/spiritual account. Look at the image provided. "
-        "First, extract the exact Hindi text written on the image. "
-        "Then, write a long, engaging Instagram caption in a mix of Hindi and English (Hinglish) based on that text. "
+        "You are an expert Fashion and Beauty Instagram Social Media Manager. Look closely at the image provided. "
+        "The image features a woman. Carefully observe her outfit, the style, the colors, and her overall look. "
+        "Write a highly engaging, stylish, and beautiful Instagram caption in a mix of Hindi and English (Hinglish) describing her amazing look and outfit. "
         "Your response MUST be the final Instagram caption, formatted beautifully with emojis. "
         "Include the following elements in this exact order:\n"
-        "1. The exact Hindi text from the image at the very top.\n"
-        "2. A 3-4 line beautiful, deep devotional thought inspired by the text in Hinglish.\n"
+        "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).\n"
+        "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
         "3. A call to action exactly like this:\n\n"
-        "Aise hi daily darshan aur thoughts ke liye follow karein! 👇\n"
+        "For more amazing fashion & AI looks, follow us! 👇\n"
         "👉 @pooja.perfect_ai\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
-        "4. At least 15-20 highly relevant spiritual hashtags at the bottom (e.g., #bhakti #darshan #pooja #krishna #mahadev etc.). "
+        "4. At least 15-20 highly relevant trending fashion and beauty hashtags at the bottom (e.g., #fashion #ootd #indianstyle #saree #beauty #poojaperfectai etc.). "
         "Do not include any extra text outside the caption itself."
     )
     img = Image.open(image_path)
