@@ -32,12 +32,10 @@ There are two completely independent bots running on separate GitHub repositorie
 ## 3. Managing Images (Local PC vs GitHub)
 
 **New Clean-PC Workflow (As requested by User):**
-1. **Adding New Images/Videos:** Save your new media files into the `images/` folder on your PC.
-2. **Uploading:** Tell me (the AI) to "Upload to GitHub" or use `git push`.
-3. **Local Deletion:** Once the images are successfully uploaded to GitHub, you can **IMMEDIATELY DELETE** them from your local PC folder. This keeps your PC storage completely empty and clean!
-4. **Auto-Deletion on GitHub:** Even though you deleted them from your PC, the images are safely queued on GitHub. The bot will automatically delete them from the GitHub server **5 minutes after posting** them to Instagram/Facebook.
-
-*(Note: Since you are deleting them locally, you do not need to use `git pull` to sync deletions anymore. Just drop new files, push, and delete locally!)*
+1. **Local PC Freedom:** The user manages the local `images/` folder entirely on their own (adding or deleting files manually).
+2. **AI Restriction:** I (the AI) MUST NEVER check, modify, or run `git pull` on the user's local PC folders. I must only interact with the PC folder when the user explicitly commands me to "Upload to GitHub".
+3. **Uploading:** When commanded, I will simply run `git add .`, `git commit`, and `git push` to send the local files to GitHub.
+4. **Auto-Deletion on GitHub:** Once safely on GitHub, the bot will automatically delete them from the GitHub server **5 minutes after posting**. The user can delete them locally on their PC whenever they want.
 
 ---
 
