@@ -85,3 +85,6 @@ When I (the AI) am tasked with generating new images for **Auto-Insta-Pooja** (F
    - **Elements:** Always include exactly TWO peacock feathers (morpankh) and ONE wooden flute (bansuri) resting near the text.
    - **Watermark:** Below the main quote, write the text '@PareshPadsala_' in smaller letters.
 5. **Posting Schedule:** Both the Auto-Insta-Pooja and Auto-Insta-Post bots are configured to run 3 times a day strictly at **9:00 AM, 3:00 PM, and 9:00 PM (IST)**.
+
+## 7. FB Story Posting Rule
+ALWAYS use the 2-step process for FB Stories (upload unpublished photo -> get photo_id -> post to /photo_stories). Do not post URL directly to /photo_stories.
