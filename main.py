@@ -52,7 +52,8 @@ def generate_caption(media_path):
         "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
         "3. A call to action exactly like this:\n\n"
         "For more amazing fashion & AI looks, follow us! 👇\n"
-        "👉 @pooja.perfect_ai\n\n"
+        "Instagram: @pooja.perfect_ai\n"
+        "Facebook: https://www.facebook.com/pooja.perfectai/\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
         "4. At least 15-20 highly relevant trending fashion and beauty hashtags at the bottom (e.g., #fashion #ootd #indianstyle #saree #beauty #poojaperfectai etc.). "
         "Do not include any extra text outside the caption itself."
@@ -97,7 +98,7 @@ def generate_caption(media_path):
             except:
                 pass
                 
-    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\n👉 @pooja.perfect_ai\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
+    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\nInstagram: @pooja.perfect_ai\nFacebook: https://www.facebook.com/pooja.perfectai/\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
