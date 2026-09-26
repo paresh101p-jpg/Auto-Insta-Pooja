@@ -2,12 +2,12 @@ name: pooja-post
 
 on:
   schedule:
-    # 9:07 AM IST is 3:37 AM UTC
-    - cron: '37 3 * * *'
-    # 3:07 PM IST is 9:37 AM UTC
-    - cron: '37 9 * * *'
-    # 9:07 PM IST is 3:37 PM UTC
-    - cron: '37 15 * * *'
+    # 6:07 AM IST is 00:37 UTC
+    - cron: '37 0 * * *'
+    # 1:12 PM IST is 07:42 UTC
+    - cron: '42 7 * * *'
+    # 7:24 PM IST is 13:54 UTC
+    - cron: '54 13 * * *'
   workflow_dispatch: # Manual trigger ke liye
 
 jobs:
