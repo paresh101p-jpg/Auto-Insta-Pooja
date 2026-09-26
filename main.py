@@ -141,31 +141,37 @@ def post_fb_video(caption, video_url):
         return False
 
 def post_fb_story(image_url):
-    print("Posting to Facebook Story...")
-    # Method 1: photo_stories
-    url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photo_stories"
-    payload = {'url': image_url, 'access_token': FB_ACCESS_TOKEN}
-    res = requests.post(url, data=payload).json()
-    if 'id' in res:
-        print(f"✅ FB Story Success (ID: {res['id']})")
-        return True
-    print(f"photo_stories failed: {res.get('error', {}).get('message', '')}")
-    
-    # Method 2: Try as a regular photo with no_story=False
-    print("Trying alternate FB Story method...")
-    url2 = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photos"
-    payload2 = {
+    print("Posting to Facebook Story (2-step method)...")
+
+    # Step 1: Upload the photo as UNPUBLISHED to get a real photo_id
+    upload_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photos"
+    upload_payload = {
         'url': image_url,
         'published': 'false',
-        'no_story': 'false',
         'access_token': FB_ACCESS_TOKEN
     }
-    res2 = requests.post(url2, data=payload2).json()
-    if 'id' in res2:
-        print(f"✅ FB Story (Method 2) Success (ID: {res2['id']})")
+    upload_res = requests.post(upload_url, data=upload_payload).json()
+    photo_id = upload_res.get('id')
+
+    if not photo_id:
+        print(f"❌ FB Story Failed (photo upload step): {upload_res}")
+        return False
+
+    print(f"Uploaded unpublished photo for story (photo_id: {photo_id})")
+
+    # Step 2: Publish that photo_id as an actual Page Story
+    story_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photo_stories"
+    story_payload = {
+        'photo_id': photo_id,
+        'access_token': FB_ACCESS_TOKEN
+    }
+    story_res = requests.post(story_url, data=story_payload).json()
+
+    if story_res.get('success') or 'post_id' in story_res or 'id' in story_res:
+        print(f"✅ FB Story Success: {story_res}")
         return True
     else:
-        print(f"❌ FB Story Failed (both methods): {res2}")
+        print(f"❌ FB Story Failed (photo_stories step): {story_res}")
         return False
 
 def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=False):
