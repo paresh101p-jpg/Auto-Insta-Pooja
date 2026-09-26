@@ -4,6 +4,7 @@ import subprocess
 import requests
 from google import genai
 from PIL import Image
+import urllib.parse
 
 # Secrets from GitHub Actions
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
