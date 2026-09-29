@@ -5,6 +5,8 @@ import requests
 from google import genai
 from PIL import Image
 import urllib.parse
+import json
+from datetime import datetime
 
 # Secrets from GitHub Actions
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -27,53 +29,118 @@ GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-flash-001"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
-def get_next_media():
-    if not os.path.exists(IMAGES_FOLDER):
-        os.makedirs(IMAGES_FOLDER)
-    files = sorted([
-        f for f in os.listdir(IMAGES_FOLDER)
-        if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".mp4"))
-    ])
-    if not files:
-        raise Exception("No media left in 'images/' folder! Please upload more.")
-    chosen = os.path.join(IMAGES_FOLDER, files[0])
-    print(f"Using media: {chosen} ({len(files)} remaining)")
-    return chosen
-
+HISTORY_FILE = "post_history.json"
 POSTED_FOLDER = "posted_images"
+REELS_FILE = "reels_urls.txt"
+TEMP_VIDEO = "temp_video.mp4"
 
-def cleanup_old_posted_media():
-    if not os.path.exists(POSTED_FOLDER):
-        os.makedirs(POSTED_FOLDER)
-    files = os.listdir(POSTED_FOLDER)
-    if files:
-        for f in files:
-            os.remove(os.path.join(POSTED_FOLDER, f))
+def load_history():
+    if os.path.exists(HISTORY_FILE):
         try:
-            subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True)
-            subprocess.run(["git", "config", "user.name", "Auto Insta Bot"], check=True)
-            subprocess.run(["git", "add", "-A"], check=True)
-            subprocess.run(["git", "commit", "-m", "Cleaned up old posted media"], check=True)
-            subprocess.run(["git", "push"], check=True)
-            print("Cleaned up old posted images and pushed.")
-        except Exception as e:
-            print(f"Git push warning during cleanup: {e}")
+            with open(HISTORY_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
 
-def move_media_and_push(media_path):
-    if not os.path.exists(POSTED_FOLDER):
-        os.makedirs(POSTED_FOLDER)
-    new_path = os.path.join(POSTED_FOLDER, os.path.basename(media_path))
-    os.rename(media_path, new_path)
+def save_history(history):
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f)
+
+def git_commit_and_push(commit_message):
     try:
         subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True)
         subprocess.run(["git", "config", "user.name", "Auto Insta Bot"], check=True)
         subprocess.run(["git", "add", "-A"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Moved to posted: {os.path.basename(media_path)}"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push"], check=True)
-        print("Media moved to posted folder and pushed to GitHub immediately!")
+        print(f"Git Push Success: {commit_message}")
     except Exception as e:
-        print(f"Git push warning during move: {e}")
-    return new_path
+        print(f"Git push warning: {e}")
+
+def get_next_media():
+    # Attempt 1: Check for local images in images/ folder with 7-day rule
+    if not os.path.exists(IMAGES_FOLDER):
+        os.makedirs(IMAGES_FOLDER)
+    
+    files = sorted([
+        f for f in os.listdir(IMAGES_FOLDER)
+        if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".mp4"))
+    ])
+    
+    history = load_history()
+    now = datetime.now()
+    
+    for f in files:
+        base_name = os.path.splitext(f)[0]
+        if base_name in history:
+            last_date_str = history[base_name]
+            try:
+                last_post_date = datetime.fromisoformat(last_date_str)
+                days_passed = (now - last_post_date).days
+                if days_passed < 7:
+                    print(f"Skipping image {f} (posted {days_passed} days ago, waiting for 7 days).")
+                    continue
+            except:
+                pass
+        
+        # Valid file found!
+        chosen_local_path = os.path.join(IMAGES_FOLDER, f)
+        history[base_name] = now.isoformat()
+        save_history(history)
+        print(f"Using local media: {chosen_local_path} ({len(files)} remaining)")
+        
+        # Move immediately so it doesn't get picked up next time
+        if not os.path.exists(POSTED_FOLDER):
+            os.makedirs(POSTED_FOLDER)
+        new_path = os.path.join(POSTED_FOLDER, f)
+        os.rename(chosen_local_path, new_path)
+        git_commit_and_push(f"Moved to posted: {f}")
+        
+        # Calculate public URL
+        clean_path = new_path.replace("\\", "/")
+        encoded_path = "/".join([urllib.parse.quote(p) for p in clean_path.split("/")])
+        media_url = f"{GITHUB_REPO_RAW_URL}{encoded_path}"
+        
+        return {
+            "type": "local",
+            "local_path": new_path,
+            "media_url": media_url,
+            "is_video": new_path.lower().endswith('.mp4'),
+            "original_path": chosen_local_path
+        }
+
+    # Attempt 2: If no valid images, use reels_urls.txt
+    print("No valid images found in images/. Checking reels_urls.txt...")
+    if os.path.exists(REELS_FILE):
+        with open(REELS_FILE, "r") as f:
+            urls = [line.strip() for line in f.readlines() if line.strip()]
+            
+        if urls:
+            catbox_url = urls[0]
+            print(f"Using Catbox URL: {catbox_url} ({len(urls)-1} remaining)")
+            
+            # Remove the used URL from the list
+            with open(REELS_FILE, "w") as f:
+                f.write("\n".join(urls[1:]))
+            git_commit_and_push("Used a Catbox URL and removed it from list")
+            
+            # Download the video temporarily so Gemini can analyze it
+            print("Downloading video from Catbox for Gemini caption generation...")
+            res = requests.get(catbox_url)
+            with open(TEMP_VIDEO, "wb") as f:
+                f.write(res.content)
+                
+            return {
+                "type": "catbox",
+                "local_path": TEMP_VIDEO,
+                "media_url": catbox_url,
+                "is_video": True,
+                "original_path": None
+            }
+            
+    raise Exception("No media available at all! (images folder is empty/blocked AND reels_urls.txt is empty). Please upload new media.")
+
 
 def generate_caption(media_path):
     is_video = media_path.lower().endswith('.mp4')
@@ -179,8 +246,6 @@ def post_fb_video(caption, video_url):
 
 def post_fb_story(image_url):
     print("Posting to Facebook Story (2-step method)...")
-
-    # Step 1: Upload the photo as UNPUBLISHED to get a real photo_id
     upload_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photos"
     upload_payload = {
         'url': image_url,
@@ -189,21 +254,16 @@ def post_fb_story(image_url):
     }
     upload_res = requests.post(upload_url, data=upload_payload).json()
     photo_id = upload_res.get('id')
-
     if not photo_id:
         print(f"❌ FB Story Failed (photo upload step): {upload_res}")
         return False
-
     print(f"Uploaded unpublished photo for story (photo_id: {photo_id})")
-
-    # Step 2: Publish that photo_id as an actual Page Story
     story_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photo_stories"
     story_payload = {
         'photo_id': photo_id,
         'access_token': FB_ACCESS_TOKEN
     }
     story_res = requests.post(story_url, data=story_payload).json()
-
     if story_res.get('success') or 'post_id' in story_res or 'id' in story_res:
         print(f"✅ FB Story Success: {story_res}")
         return True
@@ -214,8 +274,6 @@ def post_fb_story(image_url):
 def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=False):
     target = "Story" if is_story else ("Reel" if is_video else "Feed")
     print(f"Posting to Instagram {target}...")
-    
-    # 1. Upload media container
     media_endpoint_url = f"https://graph.facebook.com/v20.0/{ig_account_id}/media"
     payload = {'access_token': FB_ACCESS_TOKEN}
     
@@ -241,7 +299,6 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
     container_id = res['id']
     print(f"Container Created: {container_id}. Waiting for processing...")
     
-    # Wait for processing
     if is_video:
         status = "IN_PROGRESS"
         while status != "FINISHED":
@@ -255,7 +312,6 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
     else:
         time.sleep(25)
     
-    # 2. Publish container
     publish_url = f"https://graph.facebook.com/v20.0/{ig_account_id}/media_publish"
     pub_payload = {
         'creation_id': container_id,
@@ -269,38 +325,46 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
         print(f"❌ IG Publish Error: {pub_res}")
         return False
 
-
-
-def move_back_to_images(posted_path):
-    print(f"Moving {posted_path} back to images folder because post failed...")
-    new_path = os.path.join(IMAGES_FOLDER, os.path.basename(posted_path))
-    os.rename(posted_path, new_path)
-    try:
-        subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True)
-        subprocess.run(["git", "config", "user.name", "Auto Insta Bot"], check=True)
-        subprocess.run(["git", "add", "-A"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Moved back to images due to failure: {os.path.basename(posted_path)}"], check=True)
-        subprocess.run(["git", "push"], check=True)
-        print("Media moved back to images folder and pushed to GitHub.")
-    except Exception as e:
-        print(f"Git push warning during move back: {e}")
+def handle_failure(media_info):
+    print("❌ Post failed. Attempting to rollback...")
+    if media_info["type"] == "local":
+        print("Moving media back to images folder...")
+        os.rename(media_info["local_path"], media_info["original_path"])
+        
+        # Remove from history
+        base_name = os.path.splitext(os.path.basename(media_info["original_path"]))[0]
+        history = load_history()
+        if base_name in history:
+            del history[base_name]
+            save_history(history)
+            
+        git_commit_and_push(f"Rollback: Moved back to images: {os.path.basename(media_info['original_path'])}")
+    elif media_info["type"] == "catbox":
+        print("Restoring Catbox URL to top of reels_urls.txt...")
+        url = media_info["media_url"]
+        urls = []
+        if os.path.exists(REELS_FILE):
+            with open(REELS_FILE, "r") as f:
+                urls = [line.strip() for line in f.readlines() if line.strip()]
+        urls.insert(0, url)
+        with open(REELS_FILE, "w") as f:
+            f.write("\n".join(urls))
+        git_commit_and_push("Rollback: Restored failed Catbox URL")
 
 if __name__ == "__main__":
     try:
-        cleanup_old_posted_media()
+        # Cleanup previously posted files to avoid large repo size
+        if os.path.exists(POSTED_FOLDER):
+            files = os.listdir(POSTED_FOLDER)
+            if files:
+                for f in files:
+                    os.remove(os.path.join(POSTED_FOLDER, f))
+                git_commit_and_push("Cleaned up old posted media")
         
-        media_path = get_next_media()
-        media_path = move_media_and_push(media_path)
-        media_filename = os.path.basename(media_path)
-        is_video = media_filename.lower().endswith('.mp4')
+        media_info = get_next_media()
+        print(f"Media URL for Graph API: {media_info['media_url']}")
         
-        # Raw GitHub URL - ensure this repository is PUBLIC or use a different hosting method
-        clean_path = media_path.replace("\\", "/")
-        encoded_path = "/".join([urllib.parse.quote(p) for p in clean_path.split("/")])
-        media_url = f"{GITHUB_REPO_RAW_URL}{encoded_path}"
-        print(f"Media URL for Graph API: {media_url}")
-        
-        caption = generate_caption(media_path)
+        caption = generate_caption(media_info["local_path"])
         
         ig_account_id = get_ig_account_id()
         if not ig_account_id:
@@ -309,27 +373,29 @@ if __name__ == "__main__":
         success = False
         
         # Post to Instagram (Reel or Feed)
-        if post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=is_video):
+        if post_ig_media(ig_account_id, caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
             success = True
             
         # Post to Instagram Story
-        post_ig_media(ig_account_id, caption, media_url, is_story=True, is_video=is_video)
+        post_ig_media(ig_account_id, caption, media_info["media_url"], is_story=True, is_video=media_info["is_video"])
         
         # Post to Facebook
-        if is_video:
-            if post_fb_video(caption, media_url):
+        if media_info["is_video"]:
+            if post_fb_video(caption, media_info["media_url"]):
                 success = True
-            # FB Story for videos via API is unstable, relying on auto-share.
         else:
-            if post_fb_feed(caption, media_url):
+            if post_fb_feed(caption, media_info["media_url"]):
                 success = True
-            post_fb_story(media_url)
+            post_fb_story(media_info["media_url"])
         
         if success:
-            print("✅ All posts done successfully! Media is already in posted_images folder.")
+            print("✅ All posts done successfully!")
         else:
-            print("❌ Post failed. Moving media back to images folder so it's not lost.")
-            move_back_to_images(media_path)
+            handle_failure(media_info)
+            
+        # Delete temp video if exists
+        if os.path.exists(TEMP_VIDEO):
+            os.remove(TEMP_VIDEO)
 
     except Exception as e:
         print(f"An error occurred: {e}")
