@@ -60,20 +60,29 @@ def git_commit_and_push(commit_message):
         print(f"Git push warning: {e}")
 
 def get_next_media():
-    # Attempt 1: Check for local images in images/ folder with 7-day rule
     if not os.path.exists(IMAGES_FOLDER):
         os.makedirs(IMAGES_FOLDER)
+        
+    last_type_file = "last_post_type.txt"
+    last_type = "REEL"
+    if os.path.exists(last_type_file):
+        with open(last_type_file, "r") as f:
+            last_type = f.read().strip()
+            
+    next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
+    print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-    files = [
-        f for f in os.listdir(IMAGES_FOLDER)
-        if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".mp4"))
-    ]
+    import random
+    files = [f for f in os.listdir(IMAGES_FOLDER) if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".mp4"))]
     random.shuffle(files)
+    
+    images = [f for f in files if not f.lower().endswith('.mp4')]
+    videos = [f for f in files if f.lower().endswith('.mp4')]
     
     history = load_history()
     now = datetime.now()
     
-    for f in files:
+    def process_local_file(f):
         base_name = os.path.splitext(f)[0]
         if base_name in history:
             last_date_str = history[base_name]
@@ -81,26 +90,22 @@ def get_next_media():
                 last_post_date = datetime.fromisoformat(last_date_str)
                 days_passed = (now - last_post_date).days
                 if days_passed < 7:
-                    print(f"Skipping image {f} (posted {days_passed} days ago, waiting for 7 days).")
-                    continue
+                    print(f"Skipping {f} (posted {days_passed} days ago, need 7)")
+                    return None
             except:
                 pass
-        
-        # Valid file found!
+                
         chosen_local_path = os.path.join(IMAGES_FOLDER, f)
         history[base_name] = now.isoformat()
         save_history(history)
-        print(f"Using local media: {chosen_local_path} ({len(files)} remaining)")
         
-        # Move immediately so it doesn't get picked up next time
         if not os.path.exists(POSTED_FOLDER):
             os.makedirs(POSTED_FOLDER)
         new_path = os.path.join(POSTED_FOLDER, f)
         os.rename(chosen_local_path, new_path)
         git_commit_and_push(f"Moved to posted: {f}")
         
-        # Calculate public URL
-        clean_path = new_path.replace("\\", "/")
+        clean_path = new_path.replace("\", "/")
         encoded_path = "/".join([urllib.parse.quote(p) for p in clean_path.split("/")])
         media_url = f"{GITHUB_REPO_RAW_URL}{encoded_path}"
         
@@ -108,41 +113,67 @@ def get_next_media():
             "type": "local",
             "local_path": new_path,
             "media_url": media_url,
-            "is_video": new_path.lower().endswith('.mp4'),
+            "is_video": f.lower().endswith('.mp4'),
             "original_path": chosen_local_path
         }
 
-    # Attempt 2: If no valid images, use reels_urls.txt
-    print("No valid images found in images/. Checking reels_urls.txt...")
-    if os.path.exists(REELS_FILE):
-        with open(REELS_FILE, "r") as f:
-            urls = [line.strip() for line in f.readlines() if line.strip()]
-            
-        if urls:
-            catbox_url = random.choice(urls)
-            print(f"Using Catbox URL: {catbox_url} ({len(urls)-1} remaining)")
-            
-            # Remove the used URL from the list
-            with open(REELS_FILE, "w") as f:
-                urls.remove(catbox_url)
-                f.write("\n".join(urls))
-            git_commit_and_push("Used a Catbox URL and removed it from list")
-            
-            # Download the video temporarily so Gemini can analyze it
-            print("Downloading video from Catbox for Gemini caption generation...")
-            res = requests.get(catbox_url)
-            with open(TEMP_VIDEO, "wb") as f:
-                f.write(res.content)
+    # Try matching next_type first
+    if next_type == "IMAGE" and images:
+        for img in images:
+            res = process_local_file(img)
+            if res:
+                with open(last_type_file, "w") as f: f.write("IMAGE")
+                return res
+        print("No valid images left, falling back to reel...")
+        next_type = "REEL"
+        
+    if next_type == "REEL":
+        if videos:
+            for vid in videos:
+                res = process_local_file(vid)
+                if res:
+                    with open(last_type_file, "w") as f: f.write("REEL")
+                    return res
+        
+        try:
+            # Check for reels_urls.txt (only for pooja or if mojilo has it)
+            if "REELS_FILE" in globals() and os.path.exists(REELS_FILE):
+                with open(REELS_FILE, "r") as f:
+                    urls = [line.strip() for line in f.readlines() if line.strip()]
+                if urls:
+                    catbox_url = random.choice(urls)
+                    with open(REELS_FILE, "w") as f:
+                        urls.remove(catbox_url)
+                        f.write("
+".join(urls))
+                    git_commit_and_push("Used a Catbox URL and removed it")
+                    
+                    print("Downloading video from Catbox for Gemini caption...")
+                    import requests
+                    res = requests.get(catbox_url)
+                    with open(TEMP_VIDEO, "wb") as f:
+                        f.write(res.content)
+                        
+                    with open(last_type_file, "w") as f: f.write("REEL")
+                    return {
+                        "type": "catbox",
+                        "local_path": TEMP_VIDEO,
+                        "media_url": catbox_url,
+                        "is_video": True,
+                        "original_path": None
+                    }
+        except Exception as e:
+            print("Error checking reels_urls: ", e)
                 
-            return {
-                "type": "catbox",
-                "local_path": TEMP_VIDEO,
-                "media_url": catbox_url,
-                "is_video": True,
-                "original_path": None
-            }
-            
-    raise Exception("No media available at all! (images folder is empty/blocked AND reels_urls.txt is empty). Please upload new media.")
+        # If reel failed, try image again as absolute fallback
+        print("No valid reels left, falling back to image...")
+        for img in images:
+            res = process_local_file(img)
+            if res:
+                with open(last_type_file, "w") as f: f.write("IMAGE")
+                return res
+
+    raise Exception("No media available at all! Please upload new media.")
 
 
 def generate_caption(media_path):
