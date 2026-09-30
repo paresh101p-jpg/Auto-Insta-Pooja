@@ -1,4 +1,5 @@
-import os
+﻿import os
+import random
 import time
 import subprocess
 import requests
@@ -63,10 +64,11 @@ def get_next_media():
     if not os.path.exists(IMAGES_FOLDER):
         os.makedirs(IMAGES_FOLDER)
     
-    files = sorted([
+    files = [
         f for f in os.listdir(IMAGES_FOLDER)
         if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".mp4"))
-    ])
+    ]
+    random.shuffle(files)
     
     history = load_history()
     now = datetime.now()
@@ -117,12 +119,13 @@ def get_next_media():
             urls = [line.strip() for line in f.readlines() if line.strip()]
             
         if urls:
-            catbox_url = urls[0]
+            catbox_url = random.choice(urls)
             print(f"Using Catbox URL: {catbox_url} ({len(urls)-1} remaining)")
             
             # Remove the used URL from the list
             with open(REELS_FILE, "w") as f:
-                f.write("\n".join(urls[1:]))
+                urls.remove(catbox_url)
+                f.write("\n".join(urls))
             git_commit_and_push("Used a Catbox URL and removed it from list")
             
             # Download the video temporarily so Gemini can analyze it
@@ -154,10 +157,10 @@ def generate_caption(media_path):
         "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).\n"
         "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
         "3. A call to action exactly like this:\n\n"
-        "For more amazing fashion & AI looks, follow us! 👇\n"
+        "For more amazing fashion & AI looks, follow us! ðŸ‘‡\n"
         "Instagram: @pooja.perfect_ai\n"
         "Facebook: @pooja.perfectai\n\n"
-        "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
+        "Like â¤ï¸ | Comment ðŸ’¬ | Share ðŸš€ | Save ðŸ“Œ\n\n"
         "4. At least 15-20 highly relevant trending fashion and beauty hashtags at the bottom (e.g., #fashion #ootd #indianstyle #saree #beauty #poojaperfectai etc.). "
         "Do not include any extra text outside the caption itself."
     )
@@ -201,7 +204,7 @@ def generate_caption(media_path):
             except:
                 pass
                 
-    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\nInstagram: @pooja.perfect_ai\nFacebook: @pooja.perfectai\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
+    return "What a stunning look! ðŸ˜âœ¨\n\nFor more amazing fashion & AI looks, follow us! ðŸ‘‡\nInstagram: @pooja.perfect_ai\nFacebook: @pooja.perfectai\n\nLike â¤ï¸ | Comment ðŸ’¬ | Share ðŸš€ | Save ðŸ“Œ\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
@@ -209,7 +212,7 @@ def get_ig_account_id():
     if 'instagram_business_account' in res:
         return res['instagram_business_account']['id']
     else:
-        print(f"❌ Error getting IG Account ID: {res}")
+        print(f"âŒ Error getting IG Account ID: {res}")
         return None
 
 def post_fb_feed(caption, image_url):
@@ -222,10 +225,10 @@ def post_fb_feed(caption, image_url):
     }
     res = requests.post(url, data=payload).json()
     if 'id' in res:
-        print(f"✅ FB Feed Success (ID: {res['id']})")
+        print(f"âœ… FB Feed Success (ID: {res['id']})")
         return True
     else:
-        print(f"❌ FB Feed Failed: {res}")
+        print(f"âŒ FB Feed Failed: {res}")
         return False
 
 def post_fb_video(caption, video_url):
@@ -238,10 +241,10 @@ def post_fb_video(caption, video_url):
     }
     res = requests.post(url, data=payload).json()
     if 'id' in res:
-        print(f"✅ FB Video Success (ID: {res['id']})")
+        print(f"âœ… FB Video Success (ID: {res['id']})")
         return True
     else:
-        print(f"❌ FB Video Failed: {res}")
+        print(f"âŒ FB Video Failed: {res}")
         return False
 
 def post_fb_story(image_url):
@@ -255,7 +258,7 @@ def post_fb_story(image_url):
     upload_res = requests.post(upload_url, data=upload_payload).json()
     photo_id = upload_res.get('id')
     if not photo_id:
-        print(f"❌ FB Story Failed (photo upload step): {upload_res}")
+        print(f"âŒ FB Story Failed (photo upload step): {upload_res}")
         return False
     print(f"Uploaded unpublished photo for story (photo_id: {photo_id})")
     story_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photo_stories"
@@ -265,10 +268,10 @@ def post_fb_story(image_url):
     }
     story_res = requests.post(story_url, data=story_payload).json()
     if story_res.get('success') or 'post_id' in story_res or 'id' in story_res:
-        print(f"✅ FB Story Success: {story_res}")
+        print(f"âœ… FB Story Success: {story_res}")
         return True
     else:
-        print(f"❌ FB Story Failed (photo_stories step): {story_res}")
+        print(f"âŒ FB Story Failed (photo_stories step): {story_res}")
         return False
 
 def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=False):
@@ -293,7 +296,7 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
             
     res = requests.post(media_endpoint_url, data=payload).json()
     if 'id' not in res:
-        print(f"❌ IG Upload Error: {res}")
+        print(f"âŒ IG Upload Error: {res}")
         return False
         
     container_id = res['id']
@@ -307,7 +310,7 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
             status = status_res.get('status_code', 'ERROR')
             print(f"Video Status: {status}")
             if status == "ERROR" or status == "EXPIRED":
-                print(f"❌ Video Processing Failed!")
+                print(f"âŒ Video Processing Failed!")
                 return False
     else:
         time.sleep(25)
@@ -319,14 +322,14 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
     }
     pub_res = requests.post(publish_url, data=pub_payload).json()
     if 'id' in pub_res:
-        print(f"✅ IG {target} Published Successfully! (ID: {pub_res['id']})")
+        print(f"âœ… IG {target} Published Successfully! (ID: {pub_res['id']})")
         return True
     else:
-        print(f"❌ IG Publish Error: {pub_res}")
+        print(f"âŒ IG Publish Error: {pub_res}")
         return False
 
 def handle_failure(media_info):
-    print("❌ Post failed. Attempting to rollback...")
+    print("âŒ Post failed. Attempting to rollback...")
     if media_info["type"] == "local":
         print("Moving media back to images folder...")
         os.rename(media_info["local_path"], media_info["original_path"])
@@ -389,7 +392,7 @@ if __name__ == "__main__":
             post_fb_story(media_info["media_url"])
         
         if success:
-            print("✅ All posts done successfully!")
+            print("âœ… All posts done successfully!")
         else:
             handle_failure(media_info)
             
