@@ -253,21 +253,30 @@ def post_fb_feed(caption, image_url):
         print(f"âŒ FB Feed Failed: {res}")
         return False
 
-def post_fb_video(caption, video_url):
-    print("Posting to Facebook Feed (Video)...")
+def post_fb_video(caption, local_file):
+    print("Posting to Facebook Feed (Video) via direct file upload...")
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/videos"
-    payload = {
-        'file_url': video_url,
-        'description': caption,
-        'access_token': FB_ACCESS_TOKEN
-    }
-    res = requests.post(url, data=payload).json()
-    if 'id' in res:
-        print(f"âœ… FB Video Success (ID: {res['id']})")
-        return True
-    else:
-        print(f"âŒ FB Video Failed: {res}")
+    try:
+        with open(local_file, "rb") as vf:
+            files = {
+                'source': (local_file, vf, 'video/mp4')
+            }
+            payload = {
+                'description': caption,
+                'access_token': FB_ACCESS_TOKEN
+            }
+            res = requests.post(url, data=payload, files=files).json()
+            
+        if 'id' in res:
+            print(f"✅ FB Video Success (ID: {res['id']})")
+            return True
+        else:
+            print(f"❌ FB Video Failed: {res}")
+            return False
+    except Exception as e:
+        print(f"❌ Error uploading FB Video: {e}")
         return False
+
 
 def post_fb_story(image_url):
     print("Posting to Facebook Story (2-step method)...")
