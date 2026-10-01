@@ -105,7 +105,7 @@ def get_next_media():
         os.rename(chosen_local_path, new_path)
         git_commit_and_push(f"Moved to posted: {f}")
         
-        clean_path = new_path.replace("\", "/")
+        clean_path = new_path.replace("\\\\", "/")
         encoded_path = "/".join([urllib.parse.quote(p) for p in clean_path.split("/")])
         media_url = f"{GITHUB_REPO_RAW_URL}{encoded_path}"
         
