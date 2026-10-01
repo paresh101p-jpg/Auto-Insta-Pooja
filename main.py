@@ -512,14 +512,14 @@ if __name__ == "__main__":
         if media_info["is_video"]:
             # Need to ensure post_fb_video exists or just use feed
             if "post_fb_video" in globals():
-                if post_fb_video(caption, media_info.get("local_file", media_info["media_url"])):
+                if post_fb_video(caption, media_info["local_path"]):
                     success = True
             else:
                 if post_fb_feed(caption, media_info["media_url"]):
                     success = True
             
             if "post_fb_video_story" in globals():
-                post_fb_video_story(media_info.get("local_file", media_info["media_url"]))
+                post_fb_video_story(media_info["local_path"])
         else:
             if post_fb_feed(caption, media_info["media_url"]):
                 success = True
