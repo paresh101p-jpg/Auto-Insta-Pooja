@@ -72,7 +72,7 @@ def get_next_media():
     next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
     print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-                def mark_url_as_used(url, is_video):
+    def mark_url_as_used(url, is_video):
         filename = "reels_urls.txt" if is_video else "images_urls.txt"
         if os.path.exists(filename):
             with open(filename, "r") as f:
