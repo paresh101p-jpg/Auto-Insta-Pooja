@@ -278,6 +278,58 @@ def post_fb_video(caption, local_file):
         return False
 
 
+
+def post_fb_video_story(local_file):
+    print("Posting to Facebook Story (Video)...")
+    url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/video_stories"
+    
+    try:
+        import os
+        file_size = os.path.getsize(local_file)
+        
+        # Step 1: Start
+        start_payload = {
+            'upload_phase': 'start',
+            'access_token': FB_ACCESS_TOKEN,
+            'file_size': file_size
+        }
+        res_start = requests.post(url, data=start_payload).json()
+        if 'video_id' not in res_start:
+            print(f"❌ FB Video Story Start Failed: {res_start}")
+            return False
+            
+        video_id = res_start['video_id']
+        upload_url = res_start['upload_url']
+        
+        # Step 2: Upload
+        with open(local_file, "rb") as vf:
+            files = {'video_file_chunk': (local_file, vf, 'video/mp4')}
+            upload_payload = {
+                'access_token': FB_ACCESS_TOKEN,
+                'upload_phase': 'upload' # Sometimes API requires auth in header
+            }
+            # Upload URL requires Authorization header with OAuth token
+            headers = {'Authorization': f'OAuth {FB_ACCESS_TOKEN}'}
+            res_up = requests.post(upload_url, headers=headers, files=files).json()
+            # Some FB APIs return success in a weird format, let's just proceed
+            
+        # Step 3: Finish
+        finish_payload = {
+            'upload_phase': 'finish',
+            'access_token': FB_ACCESS_TOKEN,
+            'video_id': video_id
+        }
+        res_finish = requests.post(url, data=finish_payload).json()
+        if res_finish.get('success'):
+            print(f"✅ FB Video Story Success (ID: {video_id})")
+            return True
+        else:
+            print(f"❌ FB Video Story Finish Failed: {res_finish}")
+            return False
+    except Exception as e:
+        print(f"❌ Error uploading FB Video Story: {e}")
+        return False
+
 def post_fb_story(image_url):
     print("Posting to Facebook Story (2-step method)...")
     upload_url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/photos"
@@ -465,6 +517,9 @@ if __name__ == "__main__":
             else:
                 if post_fb_feed(caption, media_info["media_url"]):
                     success = True
+            
+            if "post_fb_video_story" in globals():
+                post_fb_video_story(media_info.get("local_file", media_info["media_url"]))
         else:
             if post_fb_feed(caption, media_info["media_url"]):
                 success = True
