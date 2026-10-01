@@ -453,10 +453,10 @@ if __name__ == "__main__":
                 if post_fb_video(caption, media_info["media_url"]):
                     success = True
             else:
-                if post_fb_feed(caption, media_info["media_url"], is_video=True):
+                if post_fb_feed(caption, media_info["media_url"]):
                     success = True
         else:
-            if post_fb_feed(caption, media_info["media_url"], is_video=False):
+            if post_fb_feed(caption, media_info["media_url"]):
                 success = True
             if "post_fb_story" in globals():
                 post_fb_story(story_url)
