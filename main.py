@@ -79,6 +79,9 @@ def get_next_media():
             if urls:
                 chosen_url = random.choice(urls)
                 urls.remove(chosen_url)
+                # Backup the used URL
+                with open("used_urls.txt", "a") as uf:
+                    uf.write(chosen_url + "\n")
                 with open(filename, "w") as f:
                     f.write("\n".join(urls))
                 git_commit_and_push(f"Used a URL from {filename}")
