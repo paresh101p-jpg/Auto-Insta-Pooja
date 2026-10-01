@@ -72,20 +72,19 @@ def get_next_media():
     next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
     print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-        def get_from_file(filename, is_video):
+            def get_from_file(filename, is_video):
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 urls = [line.strip() for line in f.readlines() if line.strip()]
             
-            while urls:
+            attempts = 0
+            while urls and attempts < 3:
                 chosen_url = random.choice(urls)
-                urls.remove(chosen_url)
                 
                 temp_ext = ".mp4" if is_video else ".jpg"
                 temp_file = "temp_media" + temp_ext
                 print(f"Downloading from {chosen_url}...")
                 
-                # Robust download with retries
                 import time
                 import requests
                 max_retries = 2
@@ -100,6 +99,9 @@ def get_next_media():
                                 f.write(res.content)
                             success_download = True
                             break
+                        elif res.status_code == 404:
+                            print("URL returned 404. It will be removed.")
+                            break
                         else:
                             print(f"Attempt {attempt+1} failed to download: Status {res.status_code}")
                     except Exception as e:
@@ -107,13 +109,15 @@ def get_next_media():
                     time.sleep(2)
                     
                 if not success_download:
-                    print(f"Failed to download {chosen_url} entirely. Removing it from list and trying another...")
-                    # Save the list without this bad URL
-                    with open(filename, "w") as f:
-                        f.write("\n".join(urls))
+                    print(f"Failed to download {chosen_url} entirely.")
+                    # Only remove if it was a 404 (file actually missing), otherwise keep it!
+                    if 'res' in locals() and res.status_code == 404:
+                        urls.remove(chosen_url)
+                    attempts += 1
                     continue # Try next URL
                     
                 # If we get here, download succeeded!
+                urls.remove(chosen_url)
                 # Backup the used URL
                 with open("used_urls.txt", "a") as uf:
                     uf.write(chosen_url + "\n")
@@ -128,6 +132,8 @@ def get_next_media():
                     "is_video": is_video,
                     "original_path": None
                 }
+            if attempts >= 3:
+                raise Exception("Failed to download media after trying 3 different URLs. Catbox might be blocking Github Actions.")
         return None
     if next_type == "IMAGE":
         res = get_from_file("images_urls.txt", False)
