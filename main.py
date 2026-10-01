@@ -59,6 +59,19 @@ def git_commit_and_push(commit_message):
     except Exception as e:
         print(f"Git push warning: {e}")
 
+def mark_url_as_used(url, is_video):
+    filename = "reels_urls.txt" if is_video else "images_urls.txt"
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+        urls = [line.strip() for line in f.readlines() if line.strip()]
+        if url in urls:
+        urls.remove(url)
+        with open(filename, "w") as f:
+        f.write("\n".join(urls))
+        with open("used_urls.txt", "a") as uf:
+        uf.write(url + "\n")
+        git_commit_and_push(f"Used and removed URL from {filename}")
+
 def get_next_media():
     import random
     import requests
@@ -72,18 +85,6 @@ def get_next_media():
     next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
     print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-    def mark_url_as_used(url, is_video):
-        filename = "reels_urls.txt" if is_video else "images_urls.txt"
-        if os.path.exists(filename):
-            with open(filename, "r") as f:
-                urls = [line.strip() for line in f.readlines() if line.strip()]
-            if url in urls:
-                urls.remove(url)
-                with open(filename, "w") as f:
-                    f.write("\n".join(urls))
-                with open("used_urls.txt", "a") as uf:
-                    uf.write(url + "\n")
-                git_commit_and_push(f"Used and removed URL from {filename}")
 
     def get_from_file(filename, is_video):
         if os.path.exists(filename):
