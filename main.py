@@ -306,11 +306,12 @@ def post_fb_video_story(local_file):
             files = {'video_file_chunk': (local_file, vf, 'video/mp4')}
             upload_payload = {
                 'access_token': FB_ACCESS_TOKEN,
-                'upload_phase': 'upload' # Sometimes API requires auth in header
+                'upload_phase': 'transfer',
+                'start_offset': '0',
+                'video_id': video_id
             }
-            # Upload URL requires Authorization header with OAuth token
             headers = {'Authorization': f'OAuth {FB_ACCESS_TOKEN}'}
-            res_up = requests.post(upload_url, headers=headers, files=files).json()
+            res_up = requests.post(upload_url, headers=headers, data=upload_payload, files=files).json()
             # Some FB APIs return success in a weird format, let's just proceed
             
         # Step 3: Finish
