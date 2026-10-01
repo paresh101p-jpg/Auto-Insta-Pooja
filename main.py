@@ -63,14 +63,14 @@ def mark_url_as_used(url, is_video):
     filename = "reels_urls.txt" if is_video else "images_urls.txt"
     if os.path.exists(filename):
         with open(filename, "r") as f:
-        urls = [line.strip() for line in f.readlines() if line.strip()]
+            urls = [line.strip() for line in f.readlines() if line.strip()]
         if url in urls:
-        urls.remove(url)
-        with open(filename, "w") as f:
-        f.write("\n".join(urls))
-        with open("used_urls.txt", "a") as uf:
-        uf.write(url + "\n")
-        git_commit_and_push(f"Used and removed URL from {filename}")
+            urls.remove(url)
+            with open(filename, "w") as f:
+                f.write("\n".join(urls))
+            with open("used_urls.txt", "a") as uf:
+                uf.write(url + "\n")
+            git_commit_and_push(f"Used and removed URL from {filename}")
 
 def get_next_media():
     import random
