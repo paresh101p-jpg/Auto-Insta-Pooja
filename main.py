@@ -89,9 +89,21 @@ def get_next_media():
                 temp_ext = ".mp4" if is_video else ".jpg"
                 temp_file = "temp_media" + temp_ext
                 print(f"Downloading from {chosen_url}...")
-                res = requests.get(chosen_url)
-                with open(temp_file, "wb") as f:
-                    f.write(res.content)
+                # Robust download with retries
+                import time
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        res = requests.get(chosen_url, timeout=15)
+                        res.raise_for_status()
+                        with open(temp_file, "wb") as f:
+                            f.write(res.content)
+                        break
+                    except Exception as e:
+                        print(f"Attempt {attempt+1} failed to download: {e}")
+                        if attempt == max_retries - 1:
+                            raise e
+                        time.sleep(2)
                     
                 return {
                     "type": "catbox",
