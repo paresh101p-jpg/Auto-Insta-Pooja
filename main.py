@@ -72,13 +72,48 @@ def get_next_media():
     next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
     print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-    def get_from_file(filename, is_video):
+        def get_from_file(filename, is_video):
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 urls = [line.strip() for line in f.readlines() if line.strip()]
-            if urls:
+            
+            while urls:
                 chosen_url = random.choice(urls)
                 urls.remove(chosen_url)
+                
+                temp_ext = ".mp4" if is_video else ".jpg"
+                temp_file = "temp_media" + temp_ext
+                print(f"Downloading from {chosen_url}...")
+                
+                # Robust download with retries
+                import time
+                import requests
+                max_retries = 2
+                success_download = False
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                
+                for attempt in range(max_retries):
+                    try:
+                        res = requests.get(chosen_url, headers=headers, timeout=15)
+                        if res.status_code == 200:
+                            with open(temp_file, "wb") as f:
+                                f.write(res.content)
+                            success_download = True
+                            break
+                        else:
+                            print(f"Attempt {attempt+1} failed to download: Status {res.status_code}")
+                    except Exception as e:
+                        print(f"Attempt {attempt+1} failed to download: {e}")
+                    time.sleep(2)
+                    
+                if not success_download:
+                    print(f"Failed to download {chosen_url} entirely. Removing it from list and trying another...")
+                    # Save the list without this bad URL
+                    with open(filename, "w") as f:
+                        f.write("\n".join(urls))
+                    continue # Try next URL
+                    
+                # If we get here, download succeeded!
                 # Backup the used URL
                 with open("used_urls.txt", "a") as uf:
                     uf.write(chosen_url + "\n")
@@ -86,25 +121,6 @@ def get_next_media():
                     f.write("\n".join(urls))
                 git_commit_and_push(f"Used a URL from {filename}")
                 
-                temp_ext = ".mp4" if is_video else ".jpg"
-                temp_file = "temp_media" + temp_ext
-                print(f"Downloading from {chosen_url}...")
-                # Robust download with retries
-                import time
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        res = requests.get(chosen_url, timeout=15)
-                        res.raise_for_status()
-                        with open(temp_file, "wb") as f:
-                            f.write(res.content)
-                        break
-                    except Exception as e:
-                        print(f"Attempt {attempt+1} failed to download: {e}")
-                        if attempt == max_retries - 1:
-                            raise e
-                        time.sleep(2)
-                    
                 return {
                     "type": "catbox",
                     "local_path": temp_file,
@@ -113,7 +129,6 @@ def get_next_media():
                     "original_path": None
                 }
         return None
-
     if next_type == "IMAGE":
         res = get_from_file("images_urls.txt", False)
         if res:
