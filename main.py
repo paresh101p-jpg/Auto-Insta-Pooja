@@ -72,7 +72,20 @@ def get_next_media():
     next_type = "REEL" if last_type == "IMAGE" else "IMAGE"
     print(f"Last post was {last_type}. Now attempting to post {next_type}...")
     
-            def get_from_file(filename, is_video):
+                def mark_url_as_used(url, is_video):
+        filename = "reels_urls.txt" if is_video else "images_urls.txt"
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                urls = [line.strip() for line in f.readlines() if line.strip()]
+            if url in urls:
+                urls.remove(url)
+                with open(filename, "w") as f:
+                    f.write("\n".join(urls))
+                with open("used_urls.txt", "a") as uf:
+                    uf.write(url + "\n")
+                git_commit_and_push(f"Used and removed URL from {filename}")
+
+    def get_from_file(filename, is_video):
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 urls = [line.strip() for line in f.readlines() if line.strip()]
@@ -100,7 +113,7 @@ def get_next_media():
                             success_download = True
                             break
                         elif res.status_code == 404:
-                            print("URL returned 404. It will be removed.")
+                            print("URL returned 404. We will skip it.")
                             break
                         else:
                             print(f"Attempt {attempt+1} failed to download: Status {res.status_code}")
@@ -110,21 +123,17 @@ def get_next_media():
                     
                 if not success_download:
                     print(f"Failed to download {chosen_url} entirely.")
-                    # Only remove if it was a 404 (file actually missing), otherwise keep it!
+                    # Only remove if it was a 404 (file actually missing)
                     if 'res' in locals() and res.status_code == 404:
-                        urls.remove(chosen_url)
+                        if chosen_url in urls:
+                            urls.remove(chosen_url)
+                            with open(filename, "w") as f:
+                                f.write("\n".join(urls))
                     attempts += 1
                     continue # Try next URL
                     
                 # If we get here, download succeeded!
-                urls.remove(chosen_url)
-                # Backup the used URL
-                with open("used_urls.txt", "a") as uf:
-                    uf.write(chosen_url + "\n")
-                with open(filename, "w") as f:
-                    f.write("\n".join(urls))
-                git_commit_and_push(f"Used a URL from {filename}")
-                
+                # DO NOT DELETE IT YET! Wait for Instagram post success!
                 return {
                     "type": "catbox",
                     "local_path": temp_file,
@@ -133,7 +142,7 @@ def get_next_media():
                     "original_path": None
                 }
             if attempts >= 3:
-                raise Exception("Failed to download media after trying 3 different URLs. Catbox might be blocking Github Actions.")
+                raise Exception("Failed to download media after trying 3 different URLs.")
         return None
     if next_type == "IMAGE":
         res = get_from_file("images_urls.txt", False)
@@ -454,6 +463,9 @@ if __name__ == "__main__":
         
         if success:
             print("Successfully posted!")
+            # Now we mark it as used!
+            if media_info["type"] == "catbox":
+                mark_url_as_used(media_info["media_url"], media_info["is_video"])
         else:
             if "handle_failure" in globals():
                 handle_failure(media_info)
