@@ -144,8 +144,7 @@ def get_next_media():
                     catbox_url = random.choice(urls)
                     with open(REELS_FILE, "w") as f:
                         urls.remove(catbox_url)
-                        f.write("
-".join(urls))
+                        f.write("\n".join(urls))
                     git_commit_and_push("Used a Catbox URL and removed it")
                     
                     print("Downloading video from Catbox for Gemini caption...")
