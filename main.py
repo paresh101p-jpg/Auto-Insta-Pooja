@@ -26,7 +26,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash-latest"]
+GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-flash-001"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
