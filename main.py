@@ -279,53 +279,21 @@ def post_fb_video(caption, local_file):
 
 
 
-def post_fb_video_story(local_file):
-    print("Posting to Facebook Story (Video)...")
+def post_fb_video_story(video_url):
+    print("Posting to Facebook Story (Video) via direct URL...")
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}/video_stories"
     
     try:
-        import os
-        file_size = os.path.getsize(local_file)
-        
-        # Step 1: Start
-        start_payload = {
-            'upload_phase': 'start',
-            'access_token': FB_ACCESS_TOKEN,
-            'file_size': file_size
+        payload = {
+            'video_url': video_url,
+            'access_token': FB_ACCESS_TOKEN
         }
-        res_start = requests.post(url, data=start_payload).json()
-        if 'video_id' not in res_start:
-            print(f"❌ FB Video Story Start Failed: {res_start}")
-            return False
-            
-        video_id = res_start['video_id']
-        upload_url = res_start['upload_url']
-        
-        # Step 2: Upload
-        with open(local_file, "rb") as vf:
-            files = {'video_file_chunk': (local_file, vf, 'video/mp4')}
-            upload_payload = {
-                'access_token': FB_ACCESS_TOKEN,
-                'upload_phase': 'transfer',
-                'start_offset': '0',
-                'video_id': video_id
-            }
-            headers = {'Authorization': f'OAuth {FB_ACCESS_TOKEN}'}
-            res_up = requests.post(upload_url, headers=headers, data=upload_payload, files=files).json()
-            # Some FB APIs return success in a weird format, let's just proceed
-            
-        # Step 3: Finish
-        finish_payload = {
-            'upload_phase': 'finish',
-            'access_token': FB_ACCESS_TOKEN,
-            'video_id': video_id
-        }
-        res_finish = requests.post(url, data=finish_payload).json()
-        if res_finish.get('success'):
-            print(f"✅ FB Video Story Success (ID: {video_id})")
+        res = requests.post(url, data=payload).json()
+        if res.get('success') or 'post_id' in res or 'id' in res:
+            print(f"✅ FB Video Story Success: {res}")
             return True
         else:
-            print(f"❌ FB Video Story Finish Failed: {res_finish}")
+            print(f"❌ FB Video Story Failed: {res}")
             return False
     except Exception as e:
         print(f"❌ Error uploading FB Video Story: {e}")
@@ -471,6 +439,18 @@ def upload_to_catbox(file_path):
         print(f"Catbox upload failed: {e}")
     return None
 
+def retry_post(func, *args, **kwargs):
+    for attempt in range(1, 4):
+        try:
+            if func(*args, **kwargs):
+                return True
+        except Exception as e:
+            print(f"⚠️ Exception in attempt {attempt}: {e}")
+        if attempt < 3:
+            print(f"Retrying in 10 seconds (Attempt {attempt+1}/3)...")
+            time.sleep(10)
+    return False
+
 if __name__ == "__main__":
     try:
         # Cleanup previously posted files to avoid large repo size
@@ -503,29 +483,29 @@ if __name__ == "__main__":
                     print(f"Using Catbox URL for story: {story_url}")
         
         # Post to Instagram Feed/Reel
-        if post_ig_media(ig_account_id, caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
+        if retry_post(post_ig_media, ig_account_id, caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
             success = True
             
         # Post to Instagram Story (using the story_url which has the blurred background for images)
-        post_ig_media(ig_account_id, caption, story_url, is_story=True, is_video=media_info["is_video"])
+        retry_post(post_ig_media, ig_account_id, caption, story_url, is_story=True, is_video=media_info["is_video"])
         
         # Post to Facebook
         if media_info["is_video"]:
             # Need to ensure post_fb_video exists or just use feed
             if "post_fb_video" in globals():
-                if post_fb_video(caption, media_info["local_path"]):
+                if retry_post(post_fb_video, caption, media_info["local_path"]):
                     success = True
             else:
-                if post_fb_feed(caption, media_info["media_url"]):
+                if retry_post(post_fb_feed, caption, media_info["media_url"]):
                     success = True
             
             if "post_fb_video_story" in globals():
-                post_fb_video_story(media_info["local_path"])
+                retry_post(post_fb_video_story, media_info["media_url"])
         else:
-            if post_fb_feed(caption, media_info["media_url"]):
+            if retry_post(post_fb_feed, caption, media_info["media_url"]):
                 success = True
             if "post_fb_story" in globals():
-                post_fb_story(story_url)
+                retry_post(post_fb_story, story_url)
         
         if success:
             print("Successfully posted!")
