@@ -445,12 +445,25 @@ def create_story_image(local_path):
     try:
         img = Image.open(local_path).convert("RGB")
         target_w, target_h = 1080, 1920
-        bg = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
-        bg = bg.filter(ImageFilter.GaussianBlur(radius=30))
         w, h = img.size
+        
+        # Create a proportionally zoomed background to fill the canvas without stretching
+        bg_scale = max(target_w / w, target_h / h)
+        bg_w, bg_h = int(w * bg_scale), int(h * bg_scale)
+        bg = img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
+        bg = bg.filter(ImageFilter.GaussianBlur(radius=30))
+        
+        # Crop the center of the blurred background
+        left = (bg_w - target_w) // 2
+        top = (bg_h - target_h) // 2
+        bg = bg.crop((left, top, left + target_w, top + target_h))
+        
+        # Foreground: preserve aspect ratio, fit inside the canvas
         scale = min(target_w / w, target_h / h)
         new_w, new_h = int(w * scale), int(h * scale)
         fg = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        
+        # Paste foreground into the exact center
         y_offset = (target_h - new_h) // 2
         x_offset = (target_w - new_w) // 2
         bg.paste(fg, (x_offset, y_offset))
