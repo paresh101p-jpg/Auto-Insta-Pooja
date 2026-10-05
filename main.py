@@ -467,7 +467,10 @@ def create_story_image(local_path):
         y_offset = (target_h - new_h) // 2
         x_offset = (target_w - new_w) // 2
         bg.paste(fg, (x_offset, y_offset))
-        story_path = "story_temp.jpg"
+        import os
+        base_name = os.path.basename(local_path)
+        dir_name = os.path.dirname(local_path)
+        story_path = os.path.join(dir_name, f"story_{base_name}") if dir_name else f"story_{base_name}"
         bg.save(story_path, quality=95)
         return story_path
     except Exception as e:
