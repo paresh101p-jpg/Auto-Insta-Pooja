@@ -101,13 +101,21 @@ def get_next_media():
                 
                 import time
                 import requests
-                max_retries = 2
+                max_retries = 3
                 success_download = False
                 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                 
+                proxies = [
+                    "",  # Direct
+                    "https://api.allorigins.win/raw?url=", # Proxy 1
+                    "https://corsproxy.io/?" # Proxy 2
+                ]
+                
                 for attempt in range(max_retries):
                     try:
-                        res = requests.get(chosen_url, headers=headers, timeout=15)
+                        target_url = proxies[attempt % len(proxies)] + chosen_url
+                        print(f"Attempt {attempt+1} downloading via: {target_url}")
+                        res = requests.get(target_url, headers=headers, timeout=25)
                         if res.status_code == 200:
                             with open(temp_file, "wb") as f:
                                 f.write(res.content)
