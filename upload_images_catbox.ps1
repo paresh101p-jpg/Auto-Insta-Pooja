@@ -6,7 +6,7 @@ if (-not (Test-Path $videoDir)) {
     exit
 }
 
-$mp4Files = @(Get-ChildItem -Path $videoDir -Filter *.jpg | Where-Object { $_.LastWriteTime -lt (Get-Date).AddMinutes(-2) })
+$mp4Files = @(Get-ChildItem -Path $videoDir -Filter *.jpg | Where-Object { $_.LastWriteTime -lt (Get-Date).AddMinutes(-2) } | Select-Object -Skip 1514)
 
 if ($mp4Files.Count -eq 0) {
     Write-Host "No .mp4 files found in $videoDir folder!"
