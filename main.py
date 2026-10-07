@@ -183,14 +183,25 @@ def generate_caption(media_path):
         "It features a woman. Carefully observe her outfit, the style, the colors, and her overall look. "
         "Write a highly engaging, stylish, and beautiful Instagram caption in a mix of Hindi and English (Hinglish) describing her amazing look and outfit. "
         "Your response MUST be the final Instagram caption, formatted beautifully with emojis. "
-        "Include the following elements in this exact order:\n"
-        "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).\n"
-        "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
-        "3. A call to action exactly like this:\n\n"
-        "For more amazing fashion & AI looks, follow us! ðŸ‘‡\n"
-        "Instagram: @pooja.perfect_ai\n"
-        "Facebook: @pooja.perfectai\n\n"
-        "Like â¤ï¸ | Comment ðŸ’¬ | Share ðŸš€ | Save ðŸ“Œ\n\n"
+        "Include the following elements in this exact order:
+"
+        "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).
+"
+        "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').
+"
+        "3. A call to action exactly like this:
+
+"
+        "For more amazing fashion & AI looks, follow us! 👇
+"
+        "Instagram: @pooja.perfect_ai
+"
+        "Facebook: @pooja.perfectai
+
+"
+        "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
+
+"
         "4. At least 15-20 highly relevant trending fashion and beauty hashtags at the bottom (e.g., #fashion #ootd #indianstyle #saree #beauty #poojaperfectai etc.). "
         "Do not include any extra text outside the caption itself."
     )
@@ -203,10 +214,12 @@ def generate_caption(media_path):
             print("Uploading video to Gemini...")
             uploaded_file = client.files.upload(file=media_path)
             while uploaded_file.state.name == "PROCESSING":
+                import time
                 time.sleep(3)
                 uploaded_file = client.files.get(name=uploaded_file.name)
             content_to_pass = uploaded_file
         else:
+            from PIL import Image
             content_to_pass = Image.open(media_path)
             
         for model_name in GEMINI_MODELS:
@@ -219,12 +232,16 @@ def generate_caption(media_path):
                     )
                     caption = response.text
                     if caption:
-                        print("Caption generated successfully!\n")
+                        print("Caption generated successfully!
+")
                         print(caption)
-                        print("\n" + "="*50 + "\n")
+                        print("
+" + "="*50 + "
+")
                         return caption
                 except Exception as e:
                     print(f"Gemini error on attempt {attempt} with {model_name}: {e}")
+                    import time
                     time.sleep(3)
     finally:
         if uploaded_file:
@@ -234,7 +251,15 @@ def generate_caption(media_path):
             except:
                 pass
                 
-    return "What a stunning look! ðŸ˜âœ¨\n\nFor more amazing fashion & AI looks, follow us! ðŸ‘‡\nInstagram: @pooja.perfect_ai\nFacebook: @pooja.perfectai\n\nLike â¤ï¸ | Comment ðŸ’¬ | Share ðŸš€ | Save ðŸ“Œ\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
+    return "What a stunning look! 😍✨
+
+For more amazing fashion & AI looks, follow us! 👇
+Instagram: @pooja.perfect_ai
+Facebook: @pooja.perfectai
+
+Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
+
+#fashion #indianfashion #ootd #saree #beauty #poojaperfectai" 
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
