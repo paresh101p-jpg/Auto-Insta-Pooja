@@ -178,24 +178,21 @@ def get_next_media():
 def generate_caption(media_path):
     is_video = media_path.lower().endswith('.mp4')
     print(f"Analyzing {'video' if is_video else 'image'} using Gemini Vision...")
-    prompt = """You are an expert Fashion and Beauty Instagram Social Media Manager. Look closely at the content provided. 
-It features a woman. Carefully observe her outfit, the style, the colors, and her overall look. 
-Write a highly engaging, stylish, and beautiful Instagram caption in a mix of Hindi and English (Hinglish) describing her amazing look and outfit. 
-Your response MUST be the final Instagram caption, formatted beautifully with emojis. 
-Include the following elements in this exact order:
-
-1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).
-2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').
-3. A call to action exactly like this:
-
-For more amazing fashion & AI looks, follow us! 👇
-Instagram: @pooja.perfect_ai
-Facebook: @pooja.perfectai
-
-Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
-
-4. Generate 10 to 15 NEW and DYNAMIC hashtags that CHANGE completely based on what you actually see in the image/video (e.g. describe her outfit, color, style, mood, location, accessories). These must be unique and descriptive for this specific image. PLUS include these mandatory ones at the very end: #poojaperfectai #fashion #ootd #beauty.
-Do not include any extra text outside the caption itself."""
+    prompt = (
+        "You are an expert Fashion and Beauty Instagram Social Media Manager. Look closely at the content provided. "
+        "It features a woman. Carefully observe her outfit, the style, the colors, and her overall look. "
+        "Write a highly engaging, stylish, and beautiful Instagram caption in a mix of Hindi and English (Hinglish) describing her amazing look and outfit. "
+        "Your response MUST be the final Instagram caption, formatted beautifully with emojis. "
+        "Include the following elements in this exact order:\n"
+        "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).\n"
+        "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
+        "3. A call to action exactly like this:\n\n"
+        "For more amazing fashion & AI looks, follow us! 👇\n"
+        "Instagram: @pooja.perfect_ai\n"
+        "Facebook: @pooja.perfectai\n\n"
+        "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
+        "4. Generate 10 to 15 NEW and DYNAMIC hashtags that CHANGE completely based on what you actually see in the image/video (e.g. describe her outfit, color, style, mood, location, accessories). These must be unique and descriptive for this specific image. PLUS include these mandatory ones at the very end: #poojaperfectai #fashion #ootd #beauty."
+    )
     
     content_to_pass = None
     uploaded_file = None
@@ -223,12 +220,9 @@ Do not include any extra text outside the caption itself."""
                     )
                     caption = response.text
                     if caption:
-                        print("Caption generated successfully!
-")
+                        print("Caption generated successfully!\n")
                         print(caption)
-                        print("
-" + "="*50 + "
-")
+                        print("\n" + "="*50 + "\n")
                         return caption
                 except Exception as e:
                     print(f"Gemini error on attempt {attempt} with {model_name}: {e}")
@@ -242,15 +236,7 @@ Do not include any extra text outside the caption itself."""
             except:
                 pass
                 
-    return """What a stunning look! 😍✨
-
-For more amazing fashion & AI looks, follow us! 👇
-Instagram: @pooja.perfect_ai
-Facebook: @pooja.perfectai
-
-Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
-
-#fashion #indianfashion #ootd #saree #beauty #poojaperfectai""" 
+    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\nInstagram: @pooja.perfect_ai\nFacebook: @pooja.perfectai\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
