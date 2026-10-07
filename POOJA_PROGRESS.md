@@ -1,4 +1,4 @@
-﻿# Auto-Insta-Pooja Progress Note
+# Auto-Insta-Pooja Progress Note
 Date: 29 Sept 2026
 
 ## Current Status
@@ -18,3 +18,13 @@ Date: 29 Sept 2026
   - **Images**: Ab images/ folder ki saari photos ko shuffle karke koi bhi ek random image chunta hai.
   - **Reels**: Ab eels_urls.txt ki pehli link lene ke bajaye, random link uthata hai aur post hone par sirf usi specific link ko file se delete kar deta hai.
 - Ye changes successfully GitHub par push ho chuke hain aur agle trigger se Random posts aana shuru ho jayengi.
+
+## Update (7 Oct 2026 - Bulk Upload, Dynamic Hashtags & Emoji Fix)
+- **Bulk Media Upload (Catbox API)**:
+  - Total 1,791 new Images aur 1,791 Reels ko successfully Catbox par upload kiya gaya. Saath hi 36 extra reels bhi manual banayi hui upload ki gayi.
+  - **Golden Rules Implemented:** `upload_images_catbox.ps1` aur `upload_catbox.ps1` ko is tarah set kiya gaya ki ye **local system se koi file delete nahi karte**, aur purani URLs ko bhi safe rakhte hue sirf **nayi URLs ko txt file me aage (append) karte hain**. 
+- **Caption Generation (main.py) Fixes**:
+  - Code me mojibake (kharab/ajeeb symbols) the jo emojis ko kha gaye the. Maine Python `main.py` me string format aur mojibake completely theek kiye taaki post me aache emojis aaye.
+  - Pura `main.py` ka prompt rewrite karke **Dynamic Hashtag Generation** chaalu kiya: Ab AI pehle image/reel dekhta hai, usme jo specific kapde, color aur mood hai, uske hisab se 10 se 15 NAYE hashtags banata hai. Mandatory tags (#fashion #poojaperfectai etc.) end me rakhta hai.
+- **Python Syntax Error**: GitHub Actions me multiline string ka ek error aa gaya tha, jise ek dum accurately fix kar diya gaya. Ab auto-post script perfect chalti hai.
+- Sabhi local changes aur txt files successfully GitHub par push ho chuki hain.
