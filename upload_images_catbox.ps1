@@ -1,19 +1,19 @@
-$videoDir = "new_video"
-$outputFile = "reels_urls.txt"
+$videoDir = "images"
+$outputFile = "images_urls.txt"
 
 if (-not (Test-Path $videoDir)) {
     Write-Host "Folder '$videoDir' not found!"
     exit
 }
 
-$mp4Files = @(Get-ChildItem -Path $videoDir -Filter *.mp4)
+$mp4Files = @(Get-ChildItem -Path $videoDir -Filter *.jpg | Where-Object { $_.LastWriteTime -lt (Get-Date).AddMinutes(-2) })
 
 if ($mp4Files.Count -eq 0) {
     Write-Host "No .mp4 files found in $videoDir folder!"
     exit
 }
 
-Write-Host "Found $($mp4Files.Count) reels. Starting upload to Catbox..."
+Write-Host "Found $($mp4Files.Count) images. Starting upload to Catbox..."
 
 $uploadedCount = 0
 
@@ -31,10 +31,12 @@ foreach ($file in $mp4Files) {
         if ($url -match "^https://") {
             Write-Host "Success! URL: $url"
             Add-Content -Path $outputFile -Value $url
-            Add-Content -Path "reels_urls_backup.txt" -Value $url
+            Add-Content -Path "images_urls_backup.txt" -Value $url
             $uploadedCount++
             
-            # Files are kept locally as per Rule 2
+            # Delete local file to free space
+            # Remove-Item disabled per user request
+            # Write-Host "Deleted local file \$fileName to free up space."
         } else {
             Write-Host "Failed to upload $fileName. Response: $url"
         }
@@ -45,6 +47,7 @@ foreach ($file in $mp4Files) {
     Start-Sleep -Seconds 1
 }
 
-Write-Host "`nUpload complete! Successfully uploaded $uploadedCount reels."
+Write-Host "`nUpload complete! Successfully uploaded $uploadedCount images."
 Write-Host "The URLs are saved in $outputFile. You can now push this file to GitHub!"
+
 
