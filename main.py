@@ -202,7 +202,7 @@ def generate_caption(media_path):
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
 
 "
-        "4. At least 15-20 highly relevant trending fashion and beauty hashtags at the bottom (e.g., #fashion #ootd #indianstyle #saree #beauty #poojaperfectai etc.). "
+        "4. Generate 10 to 15 NEW and DYNAMIC hashtags that CHANGE completely based on what you actually see in the image/video (e.g. describe her outfit, color, style, mood, location, accessories). These must be unique and descriptive for this specific image. PLUS include these mandatory ones at the very end: #poojaperfectai #fashion #ootd #beauty. "
         "Do not include any extra text outside the caption itself."
     )
     
