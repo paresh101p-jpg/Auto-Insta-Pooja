@@ -28,3 +28,10 @@ Date: 29 Sept 2026
   - Pura `main.py` ka prompt rewrite karke **Dynamic Hashtag Generation** chaalu kiya: Ab AI pehle image/reel dekhta hai, usme jo specific kapde, color aur mood hai, uske hisab se 10 se 15 NAYE hashtags banata hai. Mandatory tags (#fashion #poojaperfectai etc.) end me rakhta hai.
 - **Python Syntax Error**: GitHub Actions me multiline string ka ek error aa gaya tha, jise ek dum accurately fix kar diya gaya. Ab auto-post script perfect chalti hai.
 - Sabhi local changes aur txt files successfully GitHub par push ho chuki hain.
+
+## Update (8 Oct 2026 - FB Story Fixes & Gemini Updates)
+- **Facebook Video Story Upload Fix**: FB Graph API me 'Video Upload Is Missing' error ko fix kiya gaya. Ab 3-step upload method me 'octet-stream' binary chunk bhej kar 30 second ka sleep (delay) lagaya gaya hai.
+- **Gemini Caption & Model Fix**: AI models (2.0/1.5 flash) '404 NOT FOUND' error de rahe the jisse fallback short caption post ho raha tha. Code me wapas 'gemini-3.8-flash' set kiya gaya taki long aur detailed AI captions wapas aane lage.
+- **FB/Insta Image Story (CDN Fix)**: Story pe photo upload fail ho rahi thi kyunki 'raw.githubusercontent.com' URL update nahi ho pa raha tha. Ise fix karke unique timestamp wala naam diya gaya aur 'JSDelivr CDN' use kiya gaya jisse image Meta ko immediately mil jaye.
+- **Krishna Repository Updates**: Ye saari same fixes 'Auto-Insta-Krishna' me bhi lagayi gayi. Uska prompt lamba aur devotional (bhakti wala) kiya gaya. Sath hi Krishna me sirf Instagram par '@sneha_padsala' ko mention karne ka alag logic lagaya gaya (FB par ye mention nahi dikhega).
+
