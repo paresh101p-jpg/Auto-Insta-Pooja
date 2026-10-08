@@ -26,7 +26,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-flash-001"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
@@ -563,12 +563,12 @@ if __name__ == "__main__":
                 shutil.copy(story_local, dest_path)
                 git_commit_and_push("Upload temporary story image for IG API")
                 
-                print("Waiting 15 seconds for GitHub CDN to update...")
-                time.sleep(15)
+                print("Waiting 25 seconds for GitHub/CDN to update...")
+                time.sleep(25)
                 
-                # We must use jsdelivr or raw.githubusercontent. Let's use raw.githubusercontent
-                story_url = f"https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/{POSTED_FOLDER}/{unique_filename}"
-                print(f"Using GitHub URL for story: {story_url}")
+                # Use jsdelivr CDN for instant access without raw.github caching issues
+                story_url = f"https://cdn.jsdelivr.net/gh/paresh101p-jpg/Auto-Insta-Pooja@master/{POSTED_FOLDER}/{unique_filename}"
+                print(f"Using JSDelivr URL for story: {story_url}")
         
         # Post to Instagram Feed/Reel
         if retry_post(post_ig_media, ig_account_id, ig_caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
