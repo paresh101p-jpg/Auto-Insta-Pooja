@@ -543,14 +543,19 @@ if __name__ == "__main__":
             if story_local != media_info["local_path"]:
                 # Upload to GitHub to get a public URL for Instagram API (bypasses Catbox IP block)
                 import shutil
+                import time
                 if not os.path.exists(POSTED_FOLDER):
                     os.makedirs(POSTED_FOLDER)
-                dest_path = os.path.join(POSTED_FOLDER, "story_temp.jpg")
+                unique_filename = f"story_temp_{int(time.time())}.jpg"
+                dest_path = os.path.join(POSTED_FOLDER, unique_filename)
                 shutil.copy(story_local, dest_path)
                 git_commit_and_push("Upload temporary story image for IG API")
                 
+                print("Waiting 15 seconds for GitHub CDN to update...")
+                time.sleep(15)
+                
                 # We must use jsdelivr or raw.githubusercontent. Let's use raw.githubusercontent
-                story_url = f"https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/{POSTED_FOLDER}/story_temp.jpg"
+                story_url = f"https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/{POSTED_FOLDER}/{unique_filename}"
                 print(f"Using GitHub URL for story: {story_url}")
         
         # Post to Instagram Feed/Reel
