@@ -26,7 +26,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-flash-001"]
+GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
@@ -179,19 +179,26 @@ def generate_caption(media_path):
     is_video = media_path.lower().endswith('.mp4')
     print(f"Analyzing {'video' if is_video else 'image'} using Gemini Vision...")
     prompt = (
-        "You are an expert Fashion and Beauty Instagram Social Media Manager. Look closely at the content provided. "
-        "It features a woman. Carefully observe her outfit, the style, the colors, and her overall look. "
-        "Write a highly engaging, stylish, and beautiful Instagram caption in a mix of Hindi and English (Hinglish) describing her amazing look and outfit. "
-        "Your response MUST be the final Instagram caption, formatted beautifully with emojis. "
-        "Include the following elements in this exact order:\n"
-        "1. A catchy 2-3 line description or compliment about her outfit, style, and beauty (Hinglish).\n"
-        "2. An engaging question for the audience (e.g., 'Kaisa laga ye look?').\n"
-        "3. A call to action exactly like this:\n\n"
+        "You are a top-tier Fashion, Beauty & Lifestyle Instagram Content Creator with 10 million followers. "
+        "Analyze the provided content very carefully — every detail of the woman's outfit, colors, fabric, accessories, hairstyle, makeup, and overall vibe matters. "
+        "Write a LONG, DETAILED, highly engaging Instagram caption in Hinglish (Hindi + English mix) that will go viral. "
+        "The caption MUST feel premium, emotional, and deeply personal — not generic. "
+        "Structure it EXACTLY like this:\n\n"
+        "PART 1 — HOOK (2-3 lines): Start with a bold, catchy, dramatic statement or compliment that stops the scroll instantly. Use emojis generously. Describe her look in vivid, poetic detail — mention colors, fabric feel, styling, accessories, makeup, hair, and the overall vibe/mood she is giving.\n\n"
+        "PART 2 — STORY/DETAIL (4-6 lines): Describe the outfit in detail in a storytelling style. Talk about why this look is special, what occasion it suits, how it makes her feel, what style inspiration it gives. Mention specific outfit elements (e.g., the embroidery, the drape, the silhouette, the jewelry). Write as if you are personally in love with this look.\n\n"
+        "PART 3 — AUDIENCE ENGAGEMENT (2-3 lines): Ask 2 engaging questions to the audience — one about their opinion on the look and one about their personal style. Encourage comments with emojis.\n\n"
+        "PART 4 — CALL TO ACTION (write EXACTLY this):\n"
         "For more amazing fashion & AI looks, follow us! 👇\n"
         "Instagram: @pooja.perfect_ai\n"
         "Facebook: @pooja.perfectai\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
-        "4. Generate 10 to 15 NEW and DYNAMIC hashtags that CHANGE completely based on what you actually see in the image/video (e.g. describe her outfit, color, style, mood, location, accessories). These must be unique and descriptive for this specific image. PLUS include these mandatory ones at the very end: #poojaperfectai #fashion #ootd #beauty."
+        "PART 5 — HASHTAGS: Generate 20 to 25 UNIQUE and HIGHLY SPECIFIC hashtags based on exactly what you see (outfit type, color, style, mood, occasion, accessories, fabric, region). They must change every time based on the image. ALWAYS include at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo.\n\n"
+        "IMPORTANT RULES:\n"
+        "- Total caption length should be 150-250 words minimum.\n"
+        "- Do NOT write generic captions. Be specific to what you actually see.\n"
+        "- Use a warm, exciting, celebratory tone. Make the reader FEEL the fashion.\n"
+        "- Mix Hindi and English naturally throughout (Hinglish).\n"
+        "- Use emojis after every 1-2 lines for visual appeal."
     )
     
     content_to_pass = None
@@ -297,13 +304,14 @@ def post_fb_video_story(local_file):
         import os
         file_size = os.path.getsize(local_file)
         
-        # Step 1: Start
+        # Step 1: Start - initialize the upload session
         start_payload = {
             'upload_phase': 'start',
             'access_token': FB_ACCESS_TOKEN,
             'file_size': file_size
         }
         res_start = requests.post(url, data=start_payload).json()
+        print(f"FB Video Story Start response: {res_start}")
         if 'video_id' not in res_start:
             print(f"❌ FB Video Story Start Failed: {res_start}")
             return False
@@ -311,28 +319,32 @@ def post_fb_video_story(local_file):
         video_id = res_start['video_id']
         upload_url = res_start['upload_url']
         
-        # Step 2: Upload
+        # Step 2: Transfer - upload the actual video bytes
+        # Use raw binary upload with Content-Type header (NOT multipart)
         with open(local_file, "rb") as vf:
-            files = {'video_file_chunk': (local_file, vf, 'video/mp4')}
-            upload_payload = {
-                'access_token': FB_ACCESS_TOKEN,
-                'upload_phase': 'transfer',
-                'start_offset': '0'
-            }
-            res_up = requests.post(upload_url, data=upload_payload, files=files)
+            video_data = vf.read()
+        
+        upload_headers = {
+            'Authorization': f'OAuth {FB_ACCESS_TOKEN}',
+            'Content-Type': 'application/octet-stream',
+            'offset': '0',
+            'file_size': str(file_size)
+        }
+        res_up = requests.post(upload_url, data=video_data, headers=upload_headers)
+        print(f"FB Video Story Upload response: {res_up.status_code} - {res_up.text[:200]}")
             
         # Give Meta's servers time to process the uploaded chunk!
-        # This prevents the "Video Upload Is Missing" error in the finish phase.
-        print("Waiting 15 seconds for Meta to process the chunk...")
-        time.sleep(15)
+        print("Waiting 30 seconds for Meta to process the video chunk...")
+        time.sleep(30)
             
-        # Step 3: Finish
+        # Step 3: Finish - publish the story
         finish_payload = {
             'upload_phase': 'finish',
             'access_token': FB_ACCESS_TOKEN,
             'video_id': video_id
         }
         res_finish = requests.post(url, data=finish_payload).json()
+        print(f"FB Video Story Finish response: {res_finish}")
         if res_finish.get('success'):
             print(f"✅ FB Video Story Success (ID: {video_id})")
             return True
