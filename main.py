@@ -553,22 +553,14 @@ if __name__ == "__main__":
         if not media_info["is_video"]:
             story_local = create_story_image(media_info["local_path"])
             if story_local != media_info["local_path"]:
-                # Upload to GitHub to get a public URL for Instagram API (bypasses Catbox IP block)
-                import shutil
-                import time
-                if not os.path.exists(POSTED_FOLDER):
-                    os.makedirs(POSTED_FOLDER)
-                unique_filename = f"story_temp_{int(time.time())}.jpg"
-                dest_path = os.path.join(POSTED_FOLDER, unique_filename)
-                shutil.copy(story_local, dest_path)
-                git_commit_and_push("Upload temporary story image for IG API")
-                
-                print("Waiting 25 seconds for GitHub/CDN to update...")
-                time.sleep(25)
-                
-                # Use jsdelivr CDN for instant access without raw.github caching issues
-                story_url = f"https://cdn.jsdelivr.net/gh/paresh101p-jpg/Auto-Insta-Pooja@master/{POSTED_FOLDER}/{unique_filename}"
-                print(f"Using JSDelivr URL for story: {story_url}")
+                # Upload story image to Catbox for a direct public URL (Instagram requires accessible URLs)
+                print("Uploading story image to Catbox...")
+                catbox_story_url = upload_to_catbox(story_local)
+                if catbox_story_url:
+                    story_url = catbox_story_url
+                    print(f"Using Catbox URL for story: {story_url}")
+                else:
+                    print("Catbox upload failed, falling back to original media URL for story.")
         
         # Post to Instagram Feed/Reel
         if retry_post(post_ig_media, ig_account_id, ig_caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
