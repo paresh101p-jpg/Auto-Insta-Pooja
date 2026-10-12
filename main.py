@@ -26,7 +26,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-flash-001"]
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
@@ -208,9 +208,14 @@ def generate_caption(media_path):
         if is_video:
             print("Uploading video to Gemini...")
             uploaded_file = client.files.upload(file=media_path)
-            while uploaded_file.state.name == "PROCESSING":
-                import time
+            import time
+            wait_attempts = 0
+            while uploaded_file.state.name != "ACTIVE" and wait_attempts < 20:
+                if uploaded_file.state.name == "FAILED":
+                    raise Exception("Gemini video processing failed.")
+                print(f"Waiting for video processing in Gemini... Status: {uploaded_file.state.name}")
                 time.sleep(3)
+                wait_attempts += 1
                 uploaded_file = client.files.get(name=uploaded_file.name)
             content_to_pass = uploaded_file
         else:
@@ -414,9 +419,9 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
         status = "IN_PROGRESS"
         while status != "FINISHED":
             time.sleep(10)
-            status_res = requests.get(f"https://graph.facebook.com/v20.0/{container_id}?fields=status_code&access_token={FB_ACCESS_TOKEN}").json()
+            status_res = requests.get(f"https://graph.facebook.com/v20.0/{container_id}?fields=status_code,status&access_token={FB_ACCESS_TOKEN}").json()
             status = status_res.get('status_code', 'ERROR')
-            print(f"Video Status: {status}")
+            print(f"Video Status: {status} (Details: {status_res.get('status', 'N/A')})")
             if status == "ERROR" or status == "EXPIRED":
                 print(f"âŒ Video Processing Failed!")
                 return False
@@ -562,9 +567,12 @@ if __name__ == "__main__":
                 else:
                     print("Catbox upload failed, falling back to original media URL for story.")
         
+        ig_success = False
+        fb_success = False
+        
         # Post to Instagram Feed/Reel
         if retry_post(post_ig_media, ig_account_id, ig_caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
-            success = True
+            ig_success = True
             
         # Post to Instagram Story (using the story_url which has the blurred background for images)
         retry_post(post_ig_media, ig_account_id, ig_caption, story_url, is_story=True, is_video=media_info["is_video"])
@@ -574,29 +582,28 @@ if __name__ == "__main__":
             # Need to ensure post_fb_video exists or just use feed
             if "post_fb_video" in globals():
                 if retry_post(post_fb_video, fb_caption, media_info["local_path"]):
-                    success = True
+                    fb_success = True
             else:
                 if retry_post(post_fb_feed, fb_caption, media_info["media_url"]):
-                    success = True
+                    fb_success = True
             
             if "post_fb_video_story" in globals():
                 retry_post(post_fb_video_story, media_info["local_path"])
         else:
             if retry_post(post_fb_feed, fb_caption, media_info["media_url"]):
-                success = True
+                fb_success = True
             if "post_fb_story" in globals():
                 retry_post(post_fb_story, story_url)
         
-        if success:
-            print("Successfully posted!")
-            # Now we mark it as used!
+        # Only treat as fully successful if Instagram succeeded (never consume queue if IG failed)
+        if ig_success:
+            print("Successfully posted to Instagram (and Facebook status: {})!".format("Success" if fb_success else "Failed"))
             if media_info["type"] == "catbox":
                 mark_url_as_used(media_info["media_url"], media_info["is_video"])
         else:
+            print("⚠️ Instagram post failed! Keeping media in queue/restoring...")
             if "handle_failure" in globals():
                 handle_failure(media_info)
-            else:
-                print("All posts failed.")
             
         if os.path.exists(TEMP_VIDEO):
             os.remove(TEMP_VIDEO)
