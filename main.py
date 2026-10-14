@@ -26,7 +26,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
+GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-3.7-flash"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
@@ -175,30 +175,60 @@ def get_next_media():
             
     raise Exception("No media available at all! Please upload new media.")
 
+def clean_caption(text):
+    if not text:
+        return ""
+    import re
+    # Remove markdown horizontal rules (---, ***, ___)
+    cleaned = re.sub(r'^\s*[-*_]{3,}\s*$', '', text, flags=re.MULTILINE)
+    cleaned = re.sub(r'---\s*', '\n\n', cleaned)
+
+    # Remove labels like "**PART 1 — HOOK:**", "PART 1: ...", etc.
+    cleaned = re.sub(r'(?i)\*{0,2}(?:---\s*)?\*{0,2}PART\s*\d+\s*[—–\-:]+[^\n:]*:\*{0,2}', '', cleaned)
+    cleaned = re.sub(r'(?i)\*{0,2}(?:HOOK & VIVID VISUAL OBSERVATION|HOOK|VIVID VISUAL OBSERVATION|OBSERVATION|STORY/DETAIL|STORY|DETAIL|FASHION STORY|AUDIENCE ENGAGEMENT|ENGAGEMENT|CALL TO ACTION|HASHTAGS)\s*:\*{0,2}', '', cleaned)
+
+    # Remove square brackets around hashtags: [#tag] -> #tag
+    cleaned = re.sub(r'\[\s*(#[a-zA-Z0-9_\u0900-\u097F]+)\s*\]', r'\1', cleaned)
+    cleaned = re.sub(r'\[(#[^\]]+)\]', r'\1', cleaned)
+
+    # Clean up empty markdown bold tags like ****
+    cleaned = re.sub(r'\*\*\s*\*\*', '', cleaned)
+
+    # Normalize excessive newlines (max 2 consecutive newlines)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned.strip()
+
 def generate_caption(media_path):
     is_video = media_path.lower().endswith('.mp4')
     print(f"Analyzing {'video' if is_video else 'image'} using Gemini Vision...")
     prompt = (
-        "You are a top-tier Fashion, Beauty & Lifestyle Instagram Content Creator with 10 million followers. "
-        "Analyze the provided content very carefully — every detail of the woman's outfit, colors, fabric, accessories, hairstyle, makeup, and overall vibe matters. "
-        "Write a LONG, DETAILED, highly engaging Instagram caption in Hinglish (Hindi + English mix) that will go viral. "
-        "The caption MUST feel premium, emotional, and deeply personal — not generic. "
-        "Structure it EXACTLY like this:\n\n"
-        "PART 1 — HOOK (2-3 lines): Start with a bold, catchy, dramatic statement or compliment that stops the scroll instantly. Use emojis generously. Describe her look in vivid, poetic detail — mention colors, fabric feel, styling, accessories, makeup, hair, and the overall vibe/mood she is giving.\n\n"
-        "PART 2 — STORY/DETAIL (4-6 lines): Describe the outfit in detail in a storytelling style. Talk about why this look is special, what occasion it suits, how it makes her feel, what style inspiration it gives. Mention specific outfit elements (e.g., the embroidery, the drape, the silhouette, the jewelry). Write as if you are personally in love with this look.\n\n"
-        "PART 3 — AUDIENCE ENGAGEMENT (2-3 lines): Ask 2 engaging questions to the audience — one about their opinion on the look and one about their personal style. Encourage comments with emojis.\n\n"
-        "PART 4 — CALL TO ACTION (write EXACTLY this):\n"
-        "For more amazing fashion & AI looks, follow us! 👇\n"
+        "You are a top-tier Fashion, Beauty & Lifestyle Instagram Content Creator with 10 million followers.\n\n"
+        "Analyze the provided visual media (photo/video) very carefully and base your caption ENTIRELY on what is ACTUALLY visible:\n"
+        "- OUTFIT & DETAILS: Identify the exact outfit style (saree, lehenga, gown, western dress, suit, co-ord set, casual), its vibrant colors, fabric texture (silk, georgette, velvet, chiffon, satin, organza), and intricate work (embroidery, zari, sequins, mirror work, prints).\n"
+        "- STYLING & ACCESSORIES: Describe the jewelry (necklace, jhumkas, maang tikka, bangles, rings), hair styling, makeup look, and expressions in rich detail.\n"
+        "- BACKDROP & AESTHETICS: Notice the setting (royal palace, heritage courtyard, festive lighting, modern studio, natural outdoors) and the luxurious, elegant ambiance.\n\n"
+        "Write a LONG, POETIC, DEEPLY ENGAGING Instagram caption in a natural, vibrant mix of Hindi and English (Hinglish) that captivates followers.\n\n"
+        "Structure the narrative smoothly (WITHOUT WRITING ANY LABELS OR HEADINGS LIKE 'PART 1', 'HOOK:', ETC.):\n\n"
+        "1. HOOK & VIVID VISUAL OBSERVATION (3-4 lines):\n"
+        "Start with an attention-grabbing, glamorous statement or compliment that stops the scroll instantly. Vividly describe what makes this visual so mesmerizing — the radiant look, colors, drape, and stunning presence.\n\n"
+        "2. FASHION STORY & STYLING INSPIRATION (5-7 lines):\n"
+        "Dive deep into the outfit details in an inspiring storytelling tone. Talk about the craftsmanship, the elegance of the silhouette, how the accessories elevate the entire ensemble, and what occasion this gorgeous look is perfect for (wedding guest, festive glam, cocktail evening, red carpet). Make the reader truly feel the magic of Indian & contemporary fashion.\n\n"
+        "3. AUDIENCE ENGAGEMENT (2-3 lines):\n"
+        "Ask 2 fun, engaging questions about the look (e.g. 'Aapko is look ka kaunsa element sabse best laga?' or 'Rate this royal look from 1 to 10 in the comments!'). Encourage everyone to comment with their favorite emojis.\n\n"
+        "4. CALL TO ACTION (Include EXACTLY this block):\n"
+        "For more amazing fashion & AI looks, follow us! 👇🔥\n"
         "Instagram: @pooja.perfect_ai\n"
         "Facebook: @pooja.perfectai\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
-        "PART 5 — HASHTAGS: Generate 20 to 25 UNIQUE and HIGHLY SPECIFIC hashtags based on exactly what you see (outfit type, color, style, mood, occasion, accessories, fabric, region). They must change every time based on the image. ALWAYS include at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo.\n\n"
-        "IMPORTANT RULES:\n"
+        "5. HASHTAGS (BASED ON THE VISUAL):\n"
+        "Generate 20 to 25 UNIQUE, HIGHLY SPECIFIC, and TRENDING hashtags based directly on what you ACTUALLY see in this specific image/video (e.g., specific outfit type, color, fabric, jewelry, festive theme, aesthetic). Write them as plain space-separated hashtags (NO brackets, NO commas). ALWAYS append at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo\n\n"
+        "CRITICAL FORMATTING INSTRUCTIONS (STRICTLY ENFORCED):\n"
+        "- NEVER output section labels, numbers, or headings like 'PART 1', 'PART 2', 'PART 3', 'PART 4', 'PART 5', 'HOOK:', 'STORY:', 'AUDIENCE ENGAGEMENT:', 'CALL TO ACTION:', 'HASHTAGS:'.\n"
+        "- NEVER include markdown divider lines like '---' or '***'.\n"
+        "- NEVER put hashtags in square brackets like '[#tag]'.\n"
         "- Total caption length should be 150-250 words minimum.\n"
-        "- Do NOT write generic captions. Be specific to what you actually see.\n"
-        "- Use a warm, exciting, celebratory tone. Make the reader FEEL the fashion.\n"
-        "- Mix Hindi and English naturally throughout (Hinglish).\n"
-        "- Use emojis after every 1-2 lines for visual appeal."
+        "- Use emojis naturally throughout to make the caption visually attractive.\n"
+        "- Output ONLY the final, seamless Instagram caption ready to post."
     )
     
     content_to_pass = None
@@ -220,7 +250,9 @@ def generate_caption(media_path):
             content_to_pass = uploaded_file
         else:
             from PIL import Image
-            content_to_pass = Image.open(media_path)
+            img = Image.open(media_path).convert("RGB")
+            img.load()
+            content_to_pass = img
             
         for model_name in GEMINI_MODELS:
             for attempt in range(1, 4):
@@ -232,7 +264,8 @@ def generate_caption(media_path):
                     )
                     caption = response.text
                     if caption:
-                        print("Caption generated successfully!\n")
+                        caption = clean_caption(caption)
+                        print("Caption generated successfully from visual!\n")
                         print(caption)
                         print("\n" + "="*50 + "\n")
                         return caption
@@ -240,6 +273,35 @@ def generate_caption(media_path):
                     print(f"Gemini error on attempt {attempt} with {model_name}: {e}")
                     import time
                     time.sleep(3)
+
+        # Fallback: Dynamically discover working models if predefined ones fail
+        try:
+            print("Attempting dynamic model discovery via client.models.list()...")
+            discovered_models = []
+            for m in client.models.list():
+                m_name = m.name.replace("models/", "") if hasattr(m, "name") and m.name else ""
+                supported = getattr(m, "supported_actions", []) or getattr(m, "supported_generation_methods", []) or []
+                if m_name and ("generateContent" in supported or not supported) and m_name not in GEMINI_MODELS:
+                    discovered_models.append(m_name)
+            
+            print(f"Discovered available models: {discovered_models[:5]}")
+            for m_name in discovered_models:
+                try:
+                    print(f"Attempting with dynamically discovered model {m_name}...")
+                    response = client.models.generate_content(
+                        model=m_name,
+                        contents=[content_to_pass, prompt]
+                    )
+                    if response.text:
+                        caption = clean_caption(response.text)
+                        print(f"Caption generated successfully using dynamic model {m_name}!\n")
+                        print(caption)
+                        print("\n" + "="*50 + "\n")
+                        return caption
+                except Exception as dyn_e:
+                    print(f"Gemini error with dynamic model {m_name}: {dyn_e}")
+        except Exception as list_e:
+            print(f"Could not list models: {list_e}")
     finally:
         if uploaded_file:
             try:
@@ -248,7 +310,16 @@ def generate_caption(media_path):
             except:
                 pass
                 
-    return "What a stunning look! 😍✨\n\nFor more amazing fashion & AI looks, follow us! 👇\nInstagram: @pooja.perfect_ai\nFacebook: @pooja.perfectai\n\nLike ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n#fashion #indianfashion #ootd #saree #beauty #poojaperfectai"
+    print("⚠️ WARNING: All Gemini Vision attempts failed, using fallback caption!")
+    return clean_caption("""What a stunning and glamorous look! ✨ Royal vibes, effortless elegance, and timeless beauty all in one frame. Perfect inspiration for your next special occasion! 💃✨
+
+For more amazing fashion & AI looks, follow us! 👇🔥
+Instagram: @pooja.perfect_ai
+Facebook: @pooja.perfectai
+
+Like ❤️ | Comment 💬 | Share 🚀 | Save 📌
+
+#poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo #ethnicwear #festivelook #glam #instafashion""")
 
 def get_ig_account_id():
     url = f"https://graph.facebook.com/v20.0/{FB_PAGE_ID}?fields=instagram_business_account&access_token={FB_ACCESS_TOKEN}"
@@ -542,6 +613,7 @@ if __name__ == "__main__":
         print(f"Media URL for Graph API: {media_info['media_url']}")
         
         caption = generate_caption(media_info["local_path"])
+        caption = clean_caption(caption)
         
         # Affiliate Marketing Rule Splitting
         ig_caption = caption + "\n\n🛒 Check out the link in my Bio!\n#ad #CommissionsEarned"
