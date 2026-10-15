@@ -15,13 +15,13 @@ if ($musics.Count -eq 0) {
 
 $effects = @(
     # Zoom In
-    "[0:v]scale=1080:1350,zoompan=z='zoom+0.002':d=150:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
+    "[0:v]scale=1080:1350:force_original_aspect_ratio=decrease,zoompan=z='zoom+0.0008':d=300:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
     # Zoom Out
-    "[0:v]scale=1080:1350,zoompan=z='1.2-in/1000':d=150:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
+    "[0:v]scale=1080:1350:force_original_aspect_ratio=decrease,zoompan=z='1.25-in/1200':d=300:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
     # Pan Right
-    "[0:v]scale=1080:1350,zoompan=z=1.1:d=150:x='iw/2-(iw/zoom/2)+in':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
+    "[0:v]scale=1080:1350:force_original_aspect_ratio=decrease,zoompan=z=1.12:d=300:x='iw/2-(iw/zoom/2)+(in/4)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]",
     # Pan Left
-    "[0:v]scale=1080:1350,zoompan=z=1.1:d=150:x='iw/2-(iw/zoom/2)-in':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]"
+    "[0:v]scale=1080:1350:force_original_aspect_ratio=decrease,zoompan=z=1.12:d=300:x='iw/2-(iw/zoom/2)-(in/4)':y='ih/2-(ih/zoom/2)':s=1080x1350:fps=30,eq=brightness=0.02:saturation=1.1[fg]"
 )
 
 $total = $images.Count
@@ -35,15 +35,15 @@ foreach ($img in $images) {
     $outPath = Join-Path $outputDir $outName
 
     if (-not (Test-Path $outPath)) {
-        # bg filter
-        $bgFilter = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:40[bg]"
+        # bg filter: beautiful frosted glass blur preserving full vertical canvas
+        $bgFilter = "[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320,boxblur=6:6,scale=1080:1920:flags=fast_bilinear[bg]"
         $fullFilter = "$bgFilter;$effect;[bg][fg]overlay=(W-w)/2:(H-h)/2[v]"
 
-        & $ffmpeg -y -v error -loop 1 -t 5.5 -i $img.FullName -t 5 -i $music.FullName -filter_complex $fullFilter -map "[v]" -map 1:a? -c:v libx264 -c:a aac -pix_fmt yuv420p -shortest $outPath
+        & $ffmpeg -y -v error -loop 1 -t 10.5 -i $img.FullName -t 10 -i $music.FullName -filter_complex $fullFilter -map "[v]" -map 1:a? -c:v libx264 -preset veryfast -c:a aac -pix_fmt yuv420p -shortest $outPath
     }
 
     $count++
-    if ($count % 10 -eq 0) { Write-Host "Processed $count of $total reels" }
+    if ($count % 5 -eq 0 -or $count -eq $total) { Write-Host "Processed $count of $total reels" }
 }
 
 Write-Host "Done! All reels generated in $outputDir"
