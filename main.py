@@ -72,6 +72,49 @@ def mark_url_as_used(url, is_video):
                 uf.write(url + "\n")
             git_commit_and_push(f"Used and removed URL from {filename}")
 
+def reload_urls_from_backup_if_needed(filename, is_video):
+    """If the active URL file is empty or missing, reload and shuffle all URLs from the master backup for an infinite cycle."""
+    backup_file = "reels_urls_backup.txt" if is_video else "images_urls_backup.txt"
+    urls = []
+    if os.path.exists(filename):
+        with open(filename, "r", encoding="utf-8", errors="ignore") as f:
+            urls = [line.strip() for line in f.readlines() if line.strip()]
+            
+    # If active file already has URLs, return immediately without any changes
+    if urls:
+        return urls
+        
+    # Active file is empty: Check if master backup exists
+    if os.path.exists(backup_file):
+        print(f"⚠️ {filename} is empty (all posts completed)! Auto-Recycling from {backup_file}...")
+        with open(backup_file, "r", encoding="utf-8", errors="ignore") as f:
+            backup_urls = [line.strip() for line in f.readlines() if line.strip()]
+            
+        if backup_urls:
+            unique_urls = list(dict.fromkeys(backup_urls))
+            import random
+            random.shuffle(unique_urls)
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("\n".join(unique_urls) + "\n")
+            print(f"✅ Auto-Recycle Success: Reloaded and shuffled {len(unique_urls)} URLs from {backup_file} into {filename}!")
+            
+            # Archive used_urls.txt to cycle archive to prevent unbounded file growth
+            if os.path.exists("used_urls.txt"):
+                try:
+                    with open("used_urls_cycle_archive.txt", "a", encoding="utf-8") as af:
+                        with open("used_urls.txt", "r", encoding="utf-8", errors="ignore") as uf:
+                            af.write(uf.read())
+                    with open("used_urls.txt", "w", encoding="utf-8") as uf:
+                        uf.write("")
+                    print("✅ Archived and reset used_urls.txt for new cycle.")
+                except Exception as ex:
+                    print(f"Notice: used_urls archive: {ex}")
+                    
+            git_commit_and_push(f"Auto-Recycle: Reloaded {len(unique_urls)} URLs from {backup_file} into {filename}")
+            return unique_urls
+            
+    return []
+
 def get_next_media():
     import random
     import requests
@@ -87,10 +130,8 @@ def get_next_media():
     
 
     def get_from_file(filename, is_video):
-        if os.path.exists(filename):
-            with open(filename, "r") as f:
-                urls = [line.strip() for line in f.readlines() if line.strip()]
-            
+        urls = reload_urls_from_backup_if_needed(filename, is_video)
+        if urls:
             attempts = 0
             while urls and attempts < 3:
                 chosen_url = random.choice(urls)
