@@ -3,6 +3,10 @@ name: pooja-post
 on:
   workflow_dispatch: # Allows manual trigger from GitHub UI and cron-job.org
 
+concurrency:
+  group: auto-post-pooja
+  cancel-in-progress: false
+
 jobs:
   post-to-instagram:
     runs-on: ubuntu-latest

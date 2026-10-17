@@ -1,4 +1,5 @@
 import os
+import sys
 import random
 import time
 import subprocess
@@ -642,6 +643,26 @@ def retry_post(func, *args, **kwargs):
 
 if __name__ == "__main__":
     try:
+        # Double-post safety lock: Prevent duplicate posts within 45 minutes
+        last_post_time_file = "last_posted_timestamp.txt"
+        min_interval_seconds = 45 * 60  # 45 minutes
+        force_post = os.environ.get("FORCE_POST", "").lower() == "true" or "--force" in sys.argv
+        
+        if not force_post and os.path.exists(last_post_time_file):
+            try:
+                with open(last_post_time_file, "r") as f:
+                    content = f.read().strip()
+                if content:
+                    last_ts = float(content)
+                    elapsed = time.time() - last_ts
+                    if elapsed < min_interval_seconds:
+                        minutes_ago = int(elapsed // 60)
+                        print(f"⚠️ DOUBLE-POST SAFETY LOCK: A post was already published {minutes_ago} minutes ago (minimum interval is 45 minutes).")
+                        print("Skipping execution to prevent duplicate posts. Exiting cleanly.")
+                        sys.exit(0)
+            except Exception as lock_err:
+                print(f"Notice: Double-post lock check: {lock_err}")
+
         # Cleanup previously posted files to avoid large repo size
         if os.path.exists(POSTED_FOLDER):
             files = os.listdir(POSTED_FOLDER)
@@ -711,6 +732,11 @@ if __name__ == "__main__":
         # Only treat as fully successful if Instagram succeeded (never consume queue if IG failed)
         if ig_success:
             print("Successfully posted to Instagram (and Facebook status: {})!".format("Success" if fb_success else "Failed"))
+            try:
+                with open("last_posted_timestamp.txt", "w") as f:
+                    f.write(str(time.time()))
+            except Exception as ts_err:
+                print(f"Notice: Could not write last_posted_timestamp: {ts_err}")
             if media_info["type"] == "catbox":
                 mark_url_as_used(media_info["media_url"], media_info["is_video"])
         else:
