@@ -134,57 +134,118 @@ def get_next_media():
         urls = reload_urls_from_backup_if_needed(filename, is_video)
         if urls:
             attempts = 0
-            while urls and attempts < 3:
+            while urls and attempts < 5:
                 chosen_url = random.choice(urls)
                 
                 temp_ext = ".mp4" if is_video else ".jpg"
                 temp_file = "temp_media" + temp_ext
-                print(f"Downloading from {chosen_url}...")
+                min_size = 350 * 1024 if is_video else 25 * 1024
+                print(f"Downloading from {chosen_url} (min required size: {min_size // 1024} KB)...")
+                
+                if os.path.exists(temp_file):
+                    try:
+                        os.remove(temp_file)
+                    except:
+                        pass
                 
                 import time
-                import requests
-                max_retries = 3
+                import subprocess
                 success_download = False
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                is_404 = False
                 
-                proxies = [
-                    "",  # Direct
-                    "https://api.allorigins.win/raw?url=", # Proxy 1
-                    "https://corsproxy.io/?" # Proxy 2
-                ]
-                
-                for attempt in range(max_retries):
-                    try:
-                        target_url = proxies[attempt % len(proxies)] + chosen_url
-                        print(f"Attempt {attempt+1} downloading via: {target_url}")
-                        res = requests.get(target_url, headers=headers, timeout=25)
-                        if res.status_code == 200:
-                            with open(temp_file, "wb") as f:
-                                f.write(res.content)
+                # 1. Primary Engine: Native curl (HTTP/2 & TLS 1.3 stack, 100% resilient on GitHub Actions Azure runners)
+                try:
+                    cmd = [
+                        "curl", "-s", "-L", "-f",
+                        "--connect-timeout", "15",
+                        "--max-time", "60",
+                        "--retry", "3",
+                        "--retry-delay", "2",
+                        "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                        "-o", temp_file,
+                        chosen_url
+                    ]
+                    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=75)
+                    if res.returncode == 0 and os.path.exists(temp_file):
+                        actual_size = os.path.getsize(temp_file)
+                        if actual_size >= min_size:
+                            print(f"[OK] Successfully downloaded media via native curl ({actual_size / 1024:.1f} KB)")
                             success_download = True
-                            break
-                        elif res.status_code == 404:
-                            print("URL returned 404. We will skip it.")
-                            break
-                        else:
-                            print(f"Attempt {attempt+1} failed to download: Status {res.status_code}")
-                    except Exception as e:
-                        print(f"Attempt {attempt+1} failed to download: {e}")
-                    time.sleep(2)
-                    
+                except Exception as ce:
+                    print(f"Notice: curl engine fallback triggered ({ce})")
+
+                # 2. Fallback 1: urllib.request (uses distinct socket implementation)
                 if not success_download:
-                    print(f"Failed to download {chosen_url} entirely.")
-                    # Only remove if it was a 404 (file actually missing)
-                    if 'res' in locals() and res.status_code == 404:
-                        if chosen_url in urls:
-                            urls.remove(chosen_url)
-                            with open(filename, "w") as f:
-                                f.write("\n".join(urls))
+                    try:
+                        import urllib.request
+                        import urllib.error
+                        req = urllib.request.Request(
+                            chosen_url,
+                            headers={
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                                "Accept": "*/*"
+                            }
+                        )
+                        with urllib.request.urlopen(req, timeout=30) as resp:
+                            if resp.status == 200:
+                                with open(temp_file, "wb") as f:
+                                    while True:
+                                        chunk = resp.read(65536)
+                                        if not chunk:
+                                            break
+                                        f.write(chunk)
+                                actual_size = os.path.getsize(temp_file) if os.path.exists(temp_file) else 0
+                                if actual_size >= min_size:
+                                    print(f"[OK] Successfully downloaded media via urllib ({actual_size / 1024:.1f} KB)")
+                                    success_download = True
+                    except urllib.error.HTTPError as he:
+                        if he.code == 404:
+                            is_404 = True
+                            print(f"URL returned 404: {chosen_url}")
+                    except Exception as ue:
+                        print(f"Notice: urllib fallback failed ({ue})")
+
+                # 3. Fallback 2: requests with Connection: close and streaming
+                if not success_download and not is_404:
+                    try:
+                        import requests
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                            'Accept': '*/*',
+                            'Connection': 'close'
+                        }
+                        with requests.get(chosen_url, headers=headers, stream=True, timeout=30) as r:
+                            if r.status_code == 200:
+                                with open(temp_file, "wb") as f:
+                                    for chunk in r.iter_content(chunk_size=65536):
+                                        if chunk:
+                                            f.write(chunk)
+                                actual_size = os.path.getsize(temp_file) if os.path.exists(temp_file) else 0
+                                if actual_size >= min_size:
+                                    print(f"[OK] Successfully downloaded media via requests ({actual_size / 1024:.1f} KB)")
+                                    success_download = True
+                            elif r.status_code == 404:
+                                is_404 = True
+                                print(f"URL returned 404: {chosen_url}")
+                    except Exception as re_err:
+                        print(f"Notice: requests fallback failed ({re_err})")
+
+                if not success_download:
+                    print(f"Failed to download healthy media from {chosen_url}.")
+                    if os.path.exists(temp_file):
+                        try:
+                            os.remove(temp_file)
+                        except:
+                            pass
+                    if is_404 and chosen_url in urls:
+                        urls.remove(chosen_url)
+                        with open(filename, "w", encoding="utf-8") as f:
+                            f.write("\n".join(urls) + "\n")
                     attempts += 1
-                    continue # Try next URL
-                    
-                # If we get here, download succeeded!
-                # DO NOT DELETE IT YET! Wait for Instagram post success!
+                    time.sleep(2)
+                    continue
+
+                # Media downloaded successfully!
                 return {
                     "type": "catbox",
                     "local_path": temp_file,
@@ -192,8 +253,8 @@ def get_next_media():
                     "is_video": is_video,
                     "original_path": None
                 }
-            if attempts >= 3:
-                raise Exception("Failed to download media after trying 3 different URLs.")
+            if attempts >= 5:
+                raise Exception("Failed to download healthy media after trying 5 different URLs.")
         return None
     if next_type == "IMAGE":
         res = get_from_file("images_urls.txt", False)
