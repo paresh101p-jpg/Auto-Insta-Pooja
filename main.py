@@ -138,7 +138,7 @@ def get_next_media():
                 chosen_url = random.choice(urls)
                 
                 temp_ext = ".mp4" if is_video else ".jpg"
-                temp_file = "temp_media" + temp_ext
+                temp_file = "download_temp_media" + temp_ext
                 min_size = 350 * 1024 if is_video else 25 * 1024
                 print(f"Downloading from {chosen_url} (min required size: {min_size // 1024} KB)...")
                 
@@ -157,15 +157,14 @@ def get_next_media():
                 try:
                     cmd = [
                         "curl", "-s", "-L", "-f",
-                        "--connect-timeout", "15",
-                        "--max-time", "60",
-                        "--retry", "3",
-                        "--retry-delay", "2",
+                        "--connect-timeout", "4",
+                        "--max-time", "12",
+                        "--retry", "1",
                         "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                         "-o", temp_file,
                         chosen_url
                     ]
-                    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=75)
+                    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
                     if res.returncode == 0 and os.path.exists(temp_file):
                         actual_size = os.path.getsize(temp_file)
                         if actual_size >= min_size:
@@ -186,7 +185,7 @@ def get_next_media():
                                 "Accept": "*/*"
                             }
                         )
-                        with urllib.request.urlopen(req, timeout=30) as resp:
+                        with urllib.request.urlopen(req, timeout=5) as resp:
                             if resp.status == 200:
                                 with open(temp_file, "wb") as f:
                                     while True:
@@ -214,7 +213,7 @@ def get_next_media():
                             'Accept': '*/*',
                             'Connection': 'close'
                         }
-                        with requests.get(chosen_url, headers=headers, stream=True, timeout=30) as r:
+                        with requests.get(chosen_url, headers=headers, stream=True, timeout=5) as r:
                             if r.status_code == 200:
                                 with open(temp_file, "wb") as f:
                                     for chunk in r.iter_content(chunk_size=65536):
@@ -242,7 +241,7 @@ def get_next_media():
                         with open(filename, "w", encoding="utf-8") as f:
                             f.write("\n".join(urls) + "\n")
                     attempts += 1
-                    time.sleep(2)
+                    time.sleep(1)
                     continue
 
                 # Media downloaded successfully!
@@ -254,7 +253,20 @@ def get_next_media():
                     "original_path": None
                 }
             if attempts >= 5:
-                raise Exception("Failed to download healthy media after trying 5 different URLs.")
+                print("⚠️ External media URLs unreachable (Catbox connection timeout/outage). Activating repository media fallback...")
+                candidates = ["fallback_media.mp4", "temp_media.mp4"] if is_video else ["fallback_media.jpg", "temp_media.jpg"]
+                for fb in candidates:
+                    if os.path.exists(fb) and os.path.getsize(fb) >= min_size:
+                        cdn_url = f"https://cdn.jsdelivr.net/gh/paresh101p-jpg/Auto-Insta-Pooja@master/{fb}"
+                        print(f"✅ Loaded repository fallback media: {fb} ({cdn_url})")
+                        return {
+                            "type": "repo_fallback",
+                            "local_path": fb,
+                            "media_url": cdn_url,
+                            "is_video": is_video,
+                            "original_path": None
+                        }
+                raise Exception("Failed to download healthy media after trying 5 different URLs and no local fallback available.")
         return None
     if next_type == "IMAGE":
         res = get_from_file("images_urls.txt", False)
