@@ -837,6 +837,7 @@ if __name__ == "__main__":
                 try:
                     import shutil
                     os.makedirs("posted_images", exist_ok=True)
+                    temp_story_name = f"story_temp_{int(time.time())}.jpg"
                     story_git_path = f"posted_images/{temp_story_name}"
                     shutil.copy2(story_local, story_git_path)
                     subprocess.run(["git", "add", "-f", story_git_path], check=False)
