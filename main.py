@@ -693,13 +693,13 @@ def create_story_image(local_path):
 def upload_to_catbox(file_path):
     try:
         import requests
-        print(f"Uploading {file_path} to Catbox for story...")
+        print(f"Uploading {file_path} to Catbox for story (timeout 4s)...")
         with open(file_path, 'rb') as f:
-            response = requests.post('https://catbox.moe/user/api.php', data={'reqtype': 'fileupload'}, files={'fileToUpload': f})
-        if response.status_code == 200:
+            response = requests.post('https://catbox.moe/user/api.php', data={'reqtype': 'fileupload'}, files={'fileToUpload': f}, timeout=4)
+        if response.status_code == 200 and response.text.startswith("http"):
             return response.text.strip()
     except Exception as e:
-        print(f"Catbox upload failed: {e}")
+        print(f"Catbox upload failed/skipped: {e}")
     return None
 
 def retry_post(func, *args, **kwargs):
