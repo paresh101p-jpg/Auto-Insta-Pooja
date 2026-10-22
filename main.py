@@ -51,12 +51,17 @@ def save_history(history):
 
 def git_commit_and_push(commit_message):
     try:
-        subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True)
-        subprocess.run(["git", "config", "user.name", "Auto Insta Bot"], check=True)
-        subprocess.run(["git", "add", "-A"], check=True)
-        subprocess.run(["git", "commit", "-m", commit_message], check=True)
-        subprocess.run(["git", "push"], check=True)
-        print(f"Git Push Success: {commit_message}")
+        subprocess.run(["git", "config", "user.email", "actions@github.com"], check=False)
+        subprocess.run(["git", "config", "user.name", "Auto Insta Bot"], check=False)
+        subprocess.run(["git", "add", "-A"], check=False)
+        subprocess.run(["git", "commit", "-m", commit_message], check=False)
+        for _ in range(3):
+            subprocess.run(["git", "pull", "--rebase", "origin", "master"], check=False)
+            res = subprocess.run(["git", "push"], check=False)
+            if res.returncode == 0:
+                print(f"Git Push Success: {commit_message}")
+                return
+            time.sleep(2)
     except Exception as e:
         print(f"Git push warning: {e}")
 
@@ -139,7 +144,7 @@ def get_next_media():
                 
                 temp_ext = ".mp4" if is_video else ".jpg"
                 temp_file = "download_temp_media" + temp_ext
-                min_size = 350 * 1024 if is_video else 25 * 1024
+                min_size = 200 * 1024 if is_video else 25 * 1024
                 print(f"Downloading from {chosen_url} (min required size: {min_size // 1024} KB)...")
                 
                 if os.path.exists(temp_file):
@@ -517,7 +522,6 @@ def post_fb_video_story(local_file):
         
         upload_headers = {
             'Authorization': f'OAuth {FB_ACCESS_TOKEN}',
-            'Content-Type': 'application/octet-stream',
             'offset': '0',
             'file_size': str(file_size)
         }
@@ -573,12 +577,70 @@ def post_fb_story(image_url):
         print(f"âŒ FB Story Failed (photo_stories step): {story_res}")
         return False
 
-def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=False):
+def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=False, local_file=None):
     target = "Story" if is_story else ("Reel" if is_video else "Feed")
     print(f"Posting to Instagram {target}...")
     media_endpoint_url = f"https://graph.facebook.com/v20.0/{ig_account_id}/media"
-    payload = {'access_token': FB_ACCESS_TOKEN}
     
+    # 1. Direct Resumable Binary Upload for Videos (Reels & Video Stories)
+    if is_video and local_file and os.path.exists(local_file):
+        try:
+            file_size = os.path.getsize(local_file)
+            print(f"Initiating Direct Resumable Upload for Instagram {target} ({file_size / (1024*1024):.2f} MB)...")
+            init_payload = {
+                'upload_type': 'resumable',
+                'media_type': 'STORIES' if is_story else 'REELS',
+                'access_token': FB_ACCESS_TOKEN
+            }
+            if not is_story:
+                init_payload['caption'] = caption
+            
+            init_res = requests.post(media_endpoint_url, data=init_payload, timeout=20).json()
+            if 'id' in init_res and 'uri' in init_res:
+                container_id = init_res['id']
+                upload_uri = init_res['uri']
+                print(f"Resumable container created: {container_id}. Uploading binary stream directly to Meta...")
+                
+                with open(local_file, "rb") as vf:
+                    video_bytes = vf.read()
+                    
+                upload_headers = {
+                    'Authorization': f'OAuth {FB_ACCESS_TOKEN}',
+                    'offset': '0',
+                    'file_size': str(file_size),
+                }
+                up_res = requests.post(upload_uri, data=video_bytes, headers=upload_headers, timeout=60)
+                print(f"Binary transfer completed with HTTP {up_res.status_code}. Waiting for Meta transcoding...")
+                
+                status = "IN_PROGRESS"
+                wait_count = 0
+                while status != "FINISHED" and wait_count < 30:
+                    time.sleep(5)
+                    wait_count += 1
+                    status_res = requests.get(f"https://graph.facebook.com/v20.0/{container_id}?fields=status_code&access_token={FB_ACCESS_TOKEN}", timeout=15).json()
+                    status = status_res.get('status_code', 'ERROR')
+                    print(f"IG Video Status ({wait_count}/30): {status}")
+                    if status == "FINISHED":
+                        break
+                    if status in ["ERROR", "EXPIRED"]:
+                        print(f"❌ IG Resumable Video Processing Failed! Error details: {status_res}")
+                        break
+                        
+                if status == "FINISHED":
+                    publish_url = f"https://graph.facebook.com/v20.0/{ig_account_id}/media_publish"
+                    pub_res = requests.post(publish_url, data={'creation_id': container_id, 'access_token': FB_ACCESS_TOKEN}, timeout=30).json()
+                    if 'id' in pub_res:
+                        print(f"✅ IG {target} Published Successfully via Direct Upload! (ID: {pub_res['id']})")
+                        return True
+                    else:
+                        print(f"❌ IG Direct Publish Error: {pub_res}")
+                else:
+                    print(f"Warning: Direct upload processing status was '{status}'. Falling back to standard URL upload...")
+        except Exception as direct_err:
+            print(f"Notice: Direct resumable upload exception: {direct_err}. Falling back to URL method...")
+
+    # Standard URL-based container creation (Images and Fallback)
+    payload = {'access_token': FB_ACCESS_TOKEN}
     if is_video:
         payload['video_url'] = media_url
         if is_story:
@@ -595,7 +657,7 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
             
     res = requests.post(media_endpoint_url, data=payload).json()
     if 'id' not in res:
-        print(f"âŒ IG Upload Error: {res}")
+        print(f"❌ IG Upload Error: {res}")
         return False
         
     container_id = res['id']
@@ -609,7 +671,7 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
             status = status_res.get('status_code', 'ERROR')
             print(f"Video Status: {status} (Details: {status_res.get('status', 'N/A')})")
             if status == "ERROR" or status == "EXPIRED":
-                print(f"âŒ Video Processing Failed!")
+                print(f"❌ Video Processing Failed!")
                 return False
     else:
         time.sleep(25)
@@ -621,10 +683,10 @@ def post_ig_media(ig_account_id, caption, media_url, is_story=False, is_video=Fa
     }
     pub_res = requests.post(publish_url, data=pub_payload).json()
     if 'id' in pub_res:
-        print(f"âœ… IG {target} Published Successfully! (ID: {pub_res['id']})")
+        print(f"✅ IG {target} Published Successfully! (ID: {pub_res['id']})")
         return True
     else:
-        print(f"âŒ IG Publish Error: {pub_res}")
+        print(f"❌ IG Publish Error: {pub_res}")
         return False
 
 def handle_failure(media_info):
@@ -719,7 +781,7 @@ if __name__ == "__main__":
         # Double-post safety lock: Prevent duplicate posts within 45 minutes
         last_post_time_file = "last_posted_timestamp.txt"
         min_interval_seconds = 45 * 60  # 45 minutes
-        force_post = os.environ.get("FORCE_POST", "").lower() == "true" or "--force" in sys.argv
+        force_post = os.environ.get("FORCE_POST", "").lower() == "true" or "--force" in sys.argv or os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
         
         if not force_post and os.path.exists(last_post_time_file):
             try:
@@ -765,24 +827,30 @@ if __name__ == "__main__":
         if not media_info["is_video"]:
             story_local = create_story_image(media_info["local_path"])
             if story_local != media_info["local_path"]:
-                # Upload story image to Catbox for a direct public URL (Instagram requires accessible URLs)
-                print("Uploading story image to Catbox...")
-                catbox_story_url = upload_to_catbox(story_local)
-                if catbox_story_url:
-                    story_url = catbox_story_url
-                    print(f"Using Catbox URL for story: {story_url}")
-                else:
-                    print("Catbox upload failed, falling back to original media URL for story.")
+                try:
+                    import shutil
+                    os.makedirs("posted_images", exist_ok=True)
+                    temp_story_name = f"story_temp_{int(time.time())}.jpg"
+                    story_git_path = os.path.join("posted_images", temp_story_name)
+                    shutil.copy2(story_local, story_git_path)
+                    git_commit_and_push("Upload temporary story image for IG API")
+                    print("Waiting 25 seconds for GitHub/CDN to update...")
+                    time.sleep(25)
+                    cdn_story = f"https://cdn.jsdelivr.net/gh/paresh101p-jpg/Auto-Insta-Pooja@master/{story_git_path}"
+                    story_url = cdn_story
+                    print(f"Using JSDelivr URL for story: {story_url}")
+                except Exception as story_err:
+                    print(f"Notice: Story git upload failed: {story_err}. Falling back to original media URL.")
         
         ig_success = False
         fb_success = False
         
         # Post to Instagram Feed/Reel
-        if retry_post(post_ig_media, ig_account_id, ig_caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"]):
+        if retry_post(post_ig_media, ig_account_id, ig_caption, media_info["media_url"], is_story=False, is_video=media_info["is_video"], local_file=media_info["local_path"]):
             ig_success = True
             
         # Post to Instagram Story (using the story_url which has the blurred background for images)
-        retry_post(post_ig_media, ig_account_id, ig_caption, story_url, is_story=True, is_video=media_info["is_video"])
+        retry_post(post_ig_media, ig_account_id, ig_caption, story_url, is_story=True, is_video=media_info["is_video"], local_file=media_info["local_path"] if media_info["is_video"] else None)
         
         # Post to Facebook
         if media_info["is_video"]:
@@ -812,6 +880,8 @@ if __name__ == "__main__":
                 print(f"Notice: Could not write last_posted_timestamp: {ts_err}")
             if media_info["type"] == "catbox":
                 mark_url_as_used(media_info["media_url"], media_info["is_video"])
+            else:
+                git_commit_and_push("Update last_post_type and timestamp")
         else:
             print("⚠️ Instagram post failed! Keeping media in queue/restoring...")
             if "handle_failure" in globals():
