@@ -314,6 +314,13 @@ def clean_caption(text):
     # Clean up empty markdown bold tags like ****
     cleaned = re.sub(r'\*\*\s*\*\*', '', cleaned)
 
+    # Enforce Instagram maximum hashtag limit (30 max permitted by IG API)
+    hashtags = re.findall(r'#[a-zA-Z0-9_\u0900-\u097F]+', cleaned)
+    if len(hashtags) > 22:
+        excess = hashtags[22:]
+        for tag in excess:
+            cleaned = re.sub(re.escape(tag) + r'(?:\s+|$)', '', cleaned)
+
     # Normalize excessive newlines (max 2 consecutive newlines)
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
     return cleaned.strip()
@@ -341,7 +348,7 @@ def generate_caption(media_path):
         "Facebook: @pooja.perfectai\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
         "5. HASHTAGS (BASED ON THE VISUAL):\n"
-        "Generate 20 to 25 UNIQUE, HIGHLY SPECIFIC, and TRENDING hashtags based directly on what you ACTUALLY see in this specific image/video (e.g., specific outfit type, color, fabric, jewelry, festive theme, aesthetic). Write them as plain space-separated hashtags (NO brackets, NO commas). ALWAYS append at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo\n\n"
+        "Generate 12 to 15 UNIQUE, HIGHLY SPECIFIC, and TRENDING hashtags based directly on what you ACTUALLY see in this specific image/video (e.g., specific outfit type, color, fabric, jewelry, festive theme, aesthetic). Write them as plain space-separated hashtags (NO brackets, NO commas). ALWAYS append at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo\n\n"
         "CRITICAL FORMATTING INSTRUCTIONS (STRICTLY ENFORCED):\n"
         "- NEVER output section labels, numbers, or headings like 'PART 1', 'PART 2', 'PART 3', 'PART 4', 'PART 5', 'HOOK:', 'STORY:', 'AUDIENCE ENGAGEMENT:', 'CALL TO ACTION:', 'HASHTAGS:'.\n"
         "- NEVER include markdown divider lines like '---' or '***'.\n"
@@ -830,9 +837,9 @@ if __name__ == "__main__":
                 try:
                     import shutil
                     os.makedirs("posted_images", exist_ok=True)
-                    temp_story_name = f"story_temp_{int(time.time())}.jpg"
-                    story_git_path = os.path.join("posted_images", temp_story_name)
+                    story_git_path = f"posted_images/{temp_story_name}"
                     shutil.copy2(story_local, story_git_path)
+                    subprocess.run(["git", "add", "-f", story_git_path], check=False)
                     git_commit_and_push("Upload temporary story image for IG API")
                     print("Waiting 25 seconds for GitHub/CDN to update...")
                     time.sleep(25)
