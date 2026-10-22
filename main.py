@@ -27,7 +27,7 @@ if FB_PAGE_ID == "YAHAN_APNA_NAYA_PAGE_ID_DALNA_HAI":
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 IMAGES_FOLDER = "images"
-GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-3.7-flash"]
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-3.8-flash", "gemini-3.7-flash"]
 # Yahan naye repo ka naam aayega (e.g., Auto-Insta-Pooja)
 GITHUB_REPO_RAW_URL = "https://raw.githubusercontent.com/paresh101p-jpg/Auto-Insta-Pooja/master/"
 
@@ -314,10 +314,10 @@ def clean_caption(text):
     # Clean up empty markdown bold tags like ****
     cleaned = re.sub(r'\*\*\s*\*\*', '', cleaned)
 
-    # Enforce Instagram maximum hashtag limit (30 max permitted by IG API)
+    # Enforce maximum 10 hashtags limit
     hashtags = re.findall(r'#[a-zA-Z0-9_\u0900-\u097F]+', cleaned)
-    if len(hashtags) > 22:
-        excess = hashtags[22:]
+    if len(hashtags) > 10:
+        excess = hashtags[10:]
         for tag in excess:
             cleaned = re.sub(re.escape(tag) + r'(?:\s+|$)', '', cleaned)
 
@@ -348,7 +348,7 @@ def generate_caption(media_path):
         "Facebook: @pooja.perfectai\n\n"
         "Like ❤️ | Comment 💬 | Share 🚀 | Save 📌\n\n"
         "5. HASHTAGS (BASED ON THE VISUAL):\n"
-        "Generate 12 to 15 UNIQUE, HIGHLY SPECIFIC, and TRENDING hashtags based directly on what you ACTUALLY see in this specific image/video (e.g., specific outfit type, color, fabric, jewelry, festive theme, aesthetic). Write them as plain space-separated hashtags (NO brackets, NO commas). ALWAYS append at the very end: #poojaperfectai #fashion #ootd #beauty #indianfashion #styleinspo\n\n"
+        "Generate 4 to 6 UNIQUE, HIGHLY SPECIFIC, and TRENDING hashtags based directly on what you ACTUALLY see in this specific image/video (e.g., specific outfit type, color, theme). Write them as plain space-separated hashtags (NO brackets, NO commas). Append at the end: #poojaperfectai #fashion #ootd #beauty (Strictly maximum 10 hashtags in total).\n\n"
         "CRITICAL FORMATTING INSTRUCTIONS (STRICTLY ENFORCED):\n"
         "- NEVER output section labels, numbers, or headings like 'PART 1', 'PART 2', 'PART 3', 'PART 4', 'PART 5', 'HOOK:', 'STORY:', 'AUDIENCE ENGAGEMENT:', 'CALL TO ACTION:', 'HASHTAGS:'.\n"
         "- NEVER include markdown divider lines like '---' or '***'.\n"
